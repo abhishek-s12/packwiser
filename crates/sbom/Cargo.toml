@@ -1,0 +1,16 @@
+[package]
+name = "packwiser-sbom"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+packwiser-core = { path = "../core" }
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+chrono.workspace = true
+
+[dev-dependencies]
+tempfile = "3"

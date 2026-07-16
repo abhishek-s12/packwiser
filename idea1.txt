@@ -1,0 +1,870 @@
+You are a Principal Software Engineer at Microsoft, ex-Rust Foundation contributor, and maintainer of multiple popular CLI tools with over 20 years of experience in systems programming, developer tooling, distributed systems, security, and software architecture.
+
+Your task is to design and build a production-ready, open-source CLI application from absolute scratch.
+
+This is NOT a toy project.
+
+The code should be written exactly like a real open-source project that could receive 50,000+ GitHub stars.
+
+==================================================================
+PROJECT NAME
+==================================================================
+
+PackWiser
+
+Tagline:
+
+"Secure. Intelligent. Reproducible Project Packaging."
+
+The goal is NOT to create another zip command.
+
+The goal is to become the industry's smartest project packaging CLI.
+
+Think of it as:
+
+Git + Docker Ignore + Gitleaks + Zip + Tar + Package Manager
+
+combined into one intelligent CLI.
+
+==================================================================
+PRIMARY OBJECTIVE
+==================================================================
+
+Create an ultra-fast CLI that packages projects safely while preventing accidental leaks of:
+
+• .env files
+• secrets
+• API keys
+• certificates
+• SSH keys
+• build artifacts
+• dependency folders
+• temporary files
+• IDE metadata
+• cache folders
+
+The tool should intelligently detect the project type, determine what should be included, create optimized archives, generate metadata, verify integrity, and optionally upload the package.
+
+Everything should be production quality.
+
+==================================================================
+LANGUAGE
+==================================================================
+
+Rust (stable)
+
+Edition 2024
+
+No unsafe code unless absolutely necessary.
+
+Memory safe.
+
+Zero-copy where possible.
+
+Streaming architecture.
+
+Minimal allocations.
+
+==================================================================
+DESIGN PHILOSOPHY
+==================================================================
+
+Every decision should prioritize
+
+• Performance
+• Reliability
+• Security
+• Maintainability
+• Extensibility
+• Cross-platform compatibility
+• Developer Experience
+
+The project should look like something created by senior engineers at Microsoft or Google.
+
+==================================================================
+PROJECT STRUCTURE
+==================================================================
+
+Use a Cargo Workspace.
+
+Example:
+
+packwiser/
+
+    crates/
+
+        cli/
+
+        core/
+
+        scanner/
+
+        ignore/
+
+        secrets/
+
+        planner/
+
+        compressor/
+
+        archive/
+
+        manifest/
+
+        checksum/
+
+        uploader/
+
+        config/
+
+        language/
+
+        report/
+
+        plugins/
+
+        telemetry/
+
+        benchmark/
+
+        integration-tests/
+
+    docs/
+
+    examples/
+
+    assets/
+
+    scripts/
+
+    .github/
+
+    Cargo.toml
+
+The architecture must be modular.
+
+Each crate should have one responsibility.
+
+==================================================================
+ARCHITECTURE
+==================================================================
+
+Design using Clean Architecture.
+
+CLI
+
+↓
+
+Command Layer
+
+↓
+
+Application Services
+
+↓
+
+Core Domain
+
+↓
+
+Infrastructure
+
+↓
+
+Filesystem
+
+↓
+
+Compression Engine
+
+↓
+
+Output
+
+No business logic inside CLI.
+
+No filesystem code inside business logic.
+
+Everything should be dependency injectable.
+
+==================================================================
+COMMANDS
+==================================================================
+
+Implement professional CLI commands.
+
+packwiser package .
+
+packwiser scan .
+
+packwiser analyze .
+
+packwiser verify archive.zip
+
+packwiser doctor
+
+packwiser secrets
+
+packwiser config
+
+packwiser benchmark
+
+packwiser upload
+
+packwiser diff
+
+packwiser stats
+
+packwiser init
+
+packwiser update
+
+packwiser clean
+
+packwiser plugins
+
+packwiser self-update
+
+Each command should have:
+
+--help
+
+--json
+
+--verbose
+
+--quiet
+
+--dry-run
+
+--color
+
+--output
+
+==================================================================
+SMART PROJECT DETECTION
+==================================================================
+
+Automatically detect:
+
+Python
+
+Node
+
+Rust
+
+Go
+
+Java
+
+Kotlin
+
+Swift
+
+Flutter
+
+React
+
+Next.js
+
+Nuxt
+
+Angular
+
+Vue
+
+Laravel
+
+Django
+
+FastAPI
+
+Spring Boot
+
+.NET
+
+Unity
+
+Unreal
+
+Android
+
+iOS
+
+CMake
+
+Monorepos
+
+Determine packaging rules automatically.
+
+==================================================================
+IGNORE ENGINE
+==================================================================
+
+Respect:
+
+.gitignore
+
+.dockerignore
+
+.npmignore
+
+.cargo_vcs_info
+
+cargo metadata
+
+.git/info/exclude
+
+Global Git Ignore
+
+Support
+
+Glob patterns
+
+Regex
+
+Negation
+
+Symlinks
+
+Nested ignore files
+
+Performance should match ripgrep.
+
+==================================================================
+SECRET DETECTION
+==================================================================
+
+Scan for
+
+AWS Keys
+
+Azure Keys
+
+Google Keys
+
+OpenAI Keys
+
+Anthropic Keys
+
+JWT Secrets
+
+Firebase
+
+Stripe
+
+Slack
+
+Discord
+
+GitHub Tokens
+
+SSH Keys
+
+RSA
+
+PEM
+
+Certificates
+
+Private Keys
+
+Passwords
+
+Environment Variables
+
+Entropy detection
+
+Regex detection
+
+Rule engine
+
+Generate severity scores.
+
+Support custom rules.
+
+==================================================================
+ARCHIVE ENGINE
+==================================================================
+
+Support
+
+ZIP
+
+ZIP64
+
+tar
+
+tar.gz
+
+tar.xz
+
+7z
+
+Streaming compression.
+
+No loading entire files into memory.
+
+Parallel compression.
+
+Configurable compression levels.
+
+Large file support.
+
+==================================================================
+CHECKSUMS
+==================================================================
+
+Generate
+
+SHA256
+
+SHA512
+
+BLAKE3
+
+CRC32
+
+Verify archives.
+
+Generate checksum files.
+
+==================================================================
+MANIFEST
+==================================================================
+
+Generate
+
+manifest.json
+
+Containing
+
+Project Name
+
+Version
+
+Language
+
+Files
+
+Directories
+
+Hashes
+
+Archive Metadata
+
+Compression Ratio
+
+Excluded Files
+
+Detected Secrets
+
+Warnings
+
+Timestamp
+
+OS
+
+CLI Version
+
+Git Commit
+
+==================================================================
+REPORTS
+==================================================================
+
+Generate
+
+HTML
+
+Markdown
+
+JSON
+
+SARIF
+
+Example report
+
+Files scanned
+
+Ignored
+
+Secrets
+
+Archive size
+
+Compression ratio
+
+Warnings
+
+Recommendations
+
+==================================================================
+QUALITY SCORE
+==================================================================
+
+Generate
+
+Package Score
+
+0–100
+
+Based on
+
+Secrets
+
+Ignored Files
+
+Archive Size
+
+Manifest
+
+Checksums
+
+Metadata
+
+Build Artifacts
+
+Reproducibility
+
+==================================================================
+PERFORMANCE
+==================================================================
+
+Use
+
+Rayon
+
+Parallel WalkDir
+
+Streaming IO
+
+Buffered Readers
+
+Memory Mapping when appropriate
+
+Avoid allocations.
+
+Use lock-free structures when beneficial.
+
+Support
+
+1 million files
+
+100GB projects
+
+Without crashing.
+
+==================================================================
+UX
+==================================================================
+
+Beautiful terminal output.
+
+Progress bars.
+
+Colored tables.
+
+Spinners.
+
+Tree view.
+
+Rich summaries.
+
+Examples
+
+✔ Detected Rust Project
+
+✔ Loaded 5 Ignore Files
+
+✔ Excluded 42,314 Files
+
+✔ Detected 2 Secrets
+
+✔ Archive Created
+
+Package Score
+
+97/100
+
+==================================================================
+CONFIGURATION
+==================================================================
+
+Support
+
+packwiser.toml
+
+User config
+
+Global config
+
+Workspace config
+
+Profiles
+
+release
+
+ci
+
+backup
+
+distribution
+
+==================================================================
+PLUGIN SYSTEM
+==================================================================
+
+Design plugin architecture.
+
+Plugins can add
+
+Languages
+
+Secret Rules
+
+Archive Formats
+
+Upload Targets
+
+Scanners
+
+Reports
+
+Do NOT hardcode everything.
+
+==================================================================
+UPLOADS
+==================================================================
+
+Optional upload support
+
+GitHub Releases
+
+AWS S3
+
+Google Cloud Storage
+
+Azure Blob
+
+MinIO
+
+Cloudflare R2
+
+==================================================================
+SECURITY
+==================================================================
+
+No secret should accidentally be archived.
+
+Warn users.
+
+Require confirmation.
+
+Never log secrets.
+
+Secure temporary files.
+
+Safe path handling.
+
+Prevent Zip Slip attacks.
+
+Validate symlinks.
+
+==================================================================
+TESTING
+==================================================================
+
+Target
+
+95%+ coverage.
+
+Unit Tests.
+
+Integration Tests.
+
+Golden Tests.
+
+Snapshot Tests.
+
+Stress Tests.
+
+Property Tests.
+
+Fuzz Testing.
+
+Benchmark Suite.
+
+==================================================================
+BENCHMARKS
+==================================================================
+
+Compare against
+
+zip
+
+tar
+
+7zip
+
+cargo package
+
+npm pack
+
+Measure
+
+Speed
+
+Memory
+
+Compression Ratio
+
+CPU Usage
+
+==================================================================
+DOCUMENTATION
+==================================================================
+
+Generate
+
+Architecture Docs
+
+API Docs
+
+Developer Guide
+
+Contribution Guide
+
+Roadmap
+
+Security Policy
+
+Examples
+
+CLI Reference
+
+==================================================================
+CI/CD
+==================================================================
+
+GitHub Actions
+
+Cross-platform builds
+
+Linux
+
+Windows
+
+macOS
+
+Automatic Releases
+
+Versioning
+
+Semantic Release
+
+Cargo Audit
+
+Clippy
+
+Rustfmt
+
+Security Scanning
+
+Dependency Review
+
+==================================================================
+CODING STANDARDS
+==================================================================
+
+No unwrap() in production.
+
+No panic! unless unrecoverable.
+
+Comprehensive error types.
+
+Use anyhow only in binaries.
+
+Use thiserror in libraries.
+
+Document every public API.
+
+Follow idiomatic Rust.
+
+Meaningful module names.
+
+No duplicated logic.
+
+==================================================================
+DEVELOPMENT PROCESS
+==================================================================
+
+Do NOT generate the whole project at once.
+
+Instead:
+
+Phase 1
+Architecture
+
+Phase 2
+Workspace
+
+Phase 3
+CLI
+
+Phase 4
+Scanner
+
+Phase 5
+Ignore Engine
+
+Phase 6
+Secret Scanner
+
+Phase 7
+Compression Engine
+
+Phase 8
+Manifest
+
+Phase 9
+Checksums
+
+Phase 10
+Reports
+
+Phase 11
+Quality Score
+
+Phase 12
+Upload System
+
+Phase 13
+Plugin System
+
+Phase 14
+Optimization
+
+Phase 15
+Testing
+
+Phase 16
+CI/CD
+
+Phase 17
+Documentation
+
+At the end of every phase:
+
+• Explain every design decision.
+• List trade-offs.
+• Identify future improvements.
+• Ensure the project builds successfully before moving on.
+
+Never skip a phase.
+
+Never leave TODOs.
+
+Produce production-ready code only.
+
+Act as if this project will become the industry standard for secure software packaging.

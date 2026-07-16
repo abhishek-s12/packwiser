@@ -1,0 +1,27 @@
+{
+  "project_name": "mock-workspace",
+  "version": "1.2.3",
+  "git_commit": "commit-12345",
+  "git_branch": "main",
+  "timestamp": "2026-07-16T12:00:00Z",
+  "language": "Rust",
+  "score": 98,
+  "checksums": {
+    "Cargo.toml": "sha256-dummy",
+    "src/main.rs": "sha256-dummy-2"
+  },
+  "files": [
+    "src/main.rs",
+    "src/lib.rs",
+    "Cargo.toml"
+  ],
+  "directories": [
+    "src"
+  ],
+  "excluded_files": [
+    "target"
+  ],
+  "secrets": [],
+  "compression_ratio": 2.15,
+  "os": "windows"
+}

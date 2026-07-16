@@ -1,0 +1,54 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/cli",
+    "crates/core",
+    "crates/ignore",
+    "crates/scanner",
+    "crates/compressor",
+    "crates/checksum",
+    "crates/manifest",
+    "crates/quality",
+    "crates/policy",
+    "crates/signature",
+    "crates/uploader",
+    "crates/sbom",
+    "crates/license",
+    "crates/plugin",
+    "crates/config",
+    "crates/ux",
+    "crates/detector",
+    "crates/report",
+    "crates/integration-tests",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+authors = ["PackWiser Maintainers"]
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+thiserror = "2.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+clap = { version = "4.5", features = ["derive", "env"] }
+anyhow = "1.0"
+ignore = "0.4"
+globset = "0.4"
+rayon = "1.10"
+regex = "1.10"
+zip = "2.1"
+tar = "0.4"
+flate2 = "1.0"
+xz2 = "0.1"
+zstd = "0.13"
+sha2 = "0.10"
+blake3 = "1.5"
+crc32fast = "1.4"
+chrono = "0.4"
+ed25519-dalek = { version = "2.1", features = ["rand_core"] }
+rand = "0.8"
+ureq = { version = "2.9", features = ["json"] }
+url = "2.5"

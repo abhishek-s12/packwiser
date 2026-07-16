@@ -1,0 +1,25 @@
+[package]
+name = "packwiser-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "packwiser"
+path = "src/main.rs"
+
+[dependencies]
+packwiser-core = { path = "../core" }
+packwiser-ignore = { path = "../ignore" }
+packwiser-scanner = { path = "../scanner" }
+packwiser-compressor = { path = "../compressor" }
+packwiser-checksum = { path = "../checksum" }
+packwiser-manifest = { path = "../manifest" }
+packwiser-quality = { path = "../quality" }
+packwiser-policy = { path = "../policy" }
+packwiser-signature = { path = "../signature" }
+packwiser-uploader = { path = "../uploader" }
+clap.workspace = true
+anyhow.workspace = true
+serde_json.workspace = true

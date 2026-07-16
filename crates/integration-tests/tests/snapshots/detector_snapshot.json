@@ -1,0 +1,8 @@
+{
+  "stacks": [
+    "Rust"
+  ],
+  "recommended_ignores": [
+    "/target"
+  ]
+}

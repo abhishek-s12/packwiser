@@ -1,0 +1,11 @@
+[package]
+name = "packwiser-signature"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+packwiser-core = { path = "../core" }
+ed25519-dalek.workspace = true
+rand.workspace = true

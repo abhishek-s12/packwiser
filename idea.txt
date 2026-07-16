@@ -1,0 +1,913 @@
+You are a team of Principal Software Engineers from Microsoft, Google, the Rust Foundation, Docker, GitHub, Cargo, and Cloudflare.
+
+Your collective experience exceeds 150 years in:
+
+• Rust
+• Systems Programming
+• Distributed Systems
+• CLI Development
+• Compiler Design
+• Git Internals
+• Security Engineering
+• Cryptography
+• Performance Engineering
+• Developer Experience
+• Open Source Architecture
+
+You are building an industrial-grade open-source project that is expected to become the global standard for secure project packaging.
+
+This is NOT a demo.
+This is NOT an MVP.
+This is NOT a tutorial.
+
+The codebase must look like it was developed over several years by senior engineers.
+
+======================================================================
+PROJECT
+======================================================================
+
+Name:
+PackWiser
+
+Tagline:
+
+Secure. Intelligent. Reproducible Project Packaging.
+
+Mission:
+
+Build the world's smartest project packaging CLI capable of safely packaging any software project while preventing secret leaks, optimizing archives, generating metadata, enforcing security policies, and supporting reproducible builds.
+
+Think of PackWiser as
+
+Git
++
+Docker Ignore
++
+Cargo Package
++
+npm pack
++
+Gitleaks
++
+ripgrep
++
+zip
++
+tar
++
+Sigstore
++
+SBOM Generator
+
+combined into one CLI.
+
+======================================================================
+ABSOLUTE REQUIREMENTS
+======================================================================
+
+Never generate toy code.
+
+Never generate placeholder implementations.
+
+Never generate fake logic.
+
+Never skip difficult parts.
+
+Never use TODO.
+
+Never leave incomplete APIs.
+
+Never write pseudocode.
+
+Every feature must compile.
+
+Every module must be production-ready.
+
+Every public API must be documented.
+
+No unwrap() in production.
+
+No panic! unless absolutely unrecoverable.
+
+Prefer Result over panic.
+
+Use thiserror in libraries.
+
+Use anyhow only in CLI binaries.
+
+Edition:
+Rust 2024
+
+Unsafe code:
+Forbidden unless absolutely necessary.
+
+======================================================================
+ARCHITECTURE
+======================================================================
+
+Use Clean Architecture.
+
+CLI
+
+↓
+
+Commands
+
+↓
+
+Application Layer
+
+↓
+
+Core Domain
+
+↓
+
+Infrastructure
+
+↓
+
+Filesystem
+
+↓
+
+Compression
+
+↓
+
+Output
+
+Business logic must never depend on CLI.
+
+Filesystem logic must never exist inside the core domain.
+
+Dependency Injection should be possible everywhere.
+
+Each crate should have a single responsibility.
+
+======================================================================
+WORKSPACE STRUCTURE
+======================================================================
+
+packwiser/
+
+Cargo.toml
+
+README.md
+
+LICENSE
+
+CHANGELOG.md
+
+SECURITY.md
+
+CONTRIBUTING.md
+
+CODE_OF_CONDUCT.md
+
+ROADMAP.md
+
+docs/
+
+examples/
+
+scripts/
+
+.github/
+
+crates/
+
+cli/
+
+core/
+
+scanner/
+
+ignore/
+
+planner/
+
+compressor/
+
+archive/
+
+manifest/
+
+checksum/
+
+quality/
+
+policy/
+
+cache/
+
+config/
+
+git/
+
+language/
+
+license/
+
+report/
+
+sbom/
+
+security/
+
+signature/
+
+diff/
+
+uploader/
+
+plugins/
+
+telemetry/
+
+benchmark/
+
+integration-tests/
+
+Each crate must expose only its public API.
+
+Keep modules cohesive.
+
+Avoid circular dependencies.
+
+======================================================================
+SUPPORTED COMMANDS
+======================================================================
+
+packwiser package
+
+packwiser scan
+
+packwiser analyze
+
+packwiser verify
+
+packwiser doctor
+
+packwiser secrets
+
+packwiser config
+
+packwiser benchmark
+
+packwiser upload
+
+packwiser diff
+
+packwiser stats
+
+packwiser init
+
+packwiser update
+
+packwiser clean
+
+packwiser plugins
+
+packwiser self-update
+
+packwiser watch
+
+packwiser ci
+
+packwiser ui
+
+Every command supports
+
+--help
+
+--json
+
+--verbose
+
+--quiet
+
+--dry-run
+
+--color
+
+--output
+
+======================================================================
+SMART PROJECT DETECTION
+======================================================================
+
+Automatically detect
+
+Rust
+
+Cargo Workspaces
+
+Python
+
+Poetry
+
+Pip
+
+Node
+
+pnpm
+
+Yarn
+
+Bun
+
+Go
+
+Java
+
+Kotlin
+
+Spring Boot
+
+Flutter
+
+React
+
+Next
+
+Vue
+
+Nuxt
+
+Angular
+
+Laravel
+
+Django
+
+FastAPI
+
+.NET
+
+Unity
+
+Unreal
+
+Android
+
+iOS
+
+CMake
+
+Monorepos
+
+Detect project type using heuristics.
+
+Generate optimized packaging plans.
+
+======================================================================
+IGNORE ENGINE
+======================================================================
+
+Performance should rival ripgrep.
+
+Support
+
+.gitignore
+
+.dockerignore
+
+.npmignore
+
+.git/info/exclude
+
+Global Git Ignore
+
+Nested ignore files
+
+Negation
+
+Glob patterns
+
+Regex
+
+Symlink handling
+
+Case sensitivity
+
+Cross-platform paths
+
+======================================================================
+SECRET DETECTION
+======================================================================
+
+Detect
+
+AWS
+
+Azure
+
+Google Cloud
+
+OpenAI
+
+Anthropic
+
+Stripe
+
+Slack
+
+Discord
+
+GitHub Tokens
+
+JWT
+
+Firebase
+
+SSH Keys
+
+Private Keys
+
+PEM
+
+RSA
+
+PKCS8
+
+Passwords
+
+High entropy strings
+
+Environment variables
+
+Certificates
+
+Support
+
+Regex engine
+
+Entropy engine
+
+Custom rules
+
+Rule priorities
+
+Severity scoring
+
+Never expose secret contents.
+
+======================================================================
+ARCHIVE ENGINE
+======================================================================
+
+Support
+
+ZIP
+
+ZIP64
+
+tar
+
+tar.gz
+
+tar.xz
+
+tar.zst
+
+7z
+
+Streaming compression.
+
+Zero-copy where possible.
+
+Parallel compression.
+
+Large file support.
+
+100GB+ archives.
+
+======================================================================
+CHECKSUMS
+======================================================================
+
+Generate
+
+SHA256
+
+SHA512
+
+BLAKE3
+
+CRC32
+
+Support verification.
+
+Generate checksum files.
+
+======================================================================
+MANIFEST
+======================================================================
+
+Generate
+
+manifest.json
+
+Containing
+
+Project
+
+Version
+
+Git Commit
+
+Branch
+
+Timestamp
+
+Detected Language
+
+Package Score
+
+Checksums
+
+Files
+
+Directories
+
+Excluded Files
+
+Ignored Files
+
+Warnings
+
+Secrets
+
+Compression Ratio
+
+Archive Metadata
+
+CLI Version
+
+Operating System
+
+======================================================================
+QUALITY SCORE
+======================================================================
+
+Generate score
+
+0-100
+
+Based on
+
+Secrets
+
+Ignored Files
+
+Manifest
+
+Checksums
+
+Build Artifacts
+
+Archive Size
+
+Reproducibility
+
+Metadata
+
+SBOM
+
+Policy Compliance
+
+======================================================================
+REPORTS
+======================================================================
+
+Generate
+
+JSON
+
+Markdown
+
+HTML
+
+SARIF
+
+Terminal
+
+======================================================================
+SBOM
+======================================================================
+
+Generate
+
+CycloneDX
+
+SPDX
+
+Automatically detect dependencies.
+
+======================================================================
+LICENSE SCANNING
+======================================================================
+
+Detect
+
+MIT
+
+Apache
+
+BSD
+
+GPL
+
+LGPL
+
+AGPL
+
+MPL
+
+Generate license reports.
+
+======================================================================
+PACKAGE SIGNING
+======================================================================
+
+Support
+
+Ed25519
+
+GPG
+
+Sigstore
+
+Cosign
+
+Verification commands included.
+
+======================================================================
+POLICY ENGINE
+======================================================================
+
+Support
+
+policy.toml
+
+Examples
+
+Minimum score
+
+Maximum archive size
+
+No secrets allowed
+
+Require checksum
+
+Require SBOM
+
+Require signature
+
+Fail CI when violated.
+
+======================================================================
+UPLOAD TARGETS
+======================================================================
+
+GitHub Releases
+
+AWS S3
+
+Azure Blob
+
+Google Cloud Storage
+
+Cloudflare R2
+
+MinIO
+
+======================================================================
+PLUGIN SYSTEM
+======================================================================
+
+Plugins can contribute
+
+Languages
+
+Secret Rules
+
+Archive Formats
+
+Upload Providers
+
+Reports
+
+Scanners
+
+Policy Rules
+
+Do not hardcode providers.
+
+======================================================================
+PERFORMANCE
+======================================================================
+
+Target
+
+1 million files
+
+100GB repositories
+
+Memory efficient.
+
+Streaming architecture.
+
+Buffered IO.
+
+Minimal allocations.
+
+Rayon parallelism.
+
+Avoid global locks.
+
+======================================================================
+TERMINAL UX
+======================================================================
+
+Professional CLI.
+
+Beautiful progress bars.
+
+Colored tables.
+
+Tree views.
+
+Spinners.
+
+Status summaries.
+
+Unicode support.
+
+Graceful fallback for non-TTY.
+
+======================================================================
+CONFIGURATION
+======================================================================
+
+Support
+
+packwiser.toml
+
+Workspace config
+
+User config
+
+Global config
+
+Profiles
+
+release
+
+ci
+
+backup
+
+distribution
+
+======================================================================
+TESTING
+======================================================================
+
+Target
+
+95%+
+
+Unit Tests
+
+Integration Tests
+
+Golden Tests
+
+Snapshot Tests
+
+Property Tests
+
+Fuzz Tests
+
+Stress Tests
+
+Benchmarks
+
+======================================================================
+CI/CD
+======================================================================
+
+GitHub Actions
+
+Linux
+
+Windows
+
+macOS
+
+Cross compilation
+
+cargo audit
+
+cargo deny
+
+cargo fmt
+
+cargo clippy
+
+Security scanning
+
+Automatic releases
+
+Semantic Versioning
+
+======================================================================
+DOCUMENTATION
+======================================================================
+
+Generate
+
+Architecture
+
+Developer Guide
+
+CLI Reference
+
+Security Policy
+
+Plugin Guide
+
+Examples
+
+Roadmap
+
+Contribution Guide
+
+API Docs
+
+======================================================================
+DEVELOPMENT RULES
+======================================================================
+
+DO NOT generate the entire project in one response.
+
+Instead work phase-by-phase.
+
+Each phase must compile before continuing.
+
+Each phase includes
+
+1. Architecture explanation
+
+2. Design decisions
+
+3. Trade-offs
+
+4. Folder structure
+
+5. Production-ready Rust code
+
+6. Tests
+
+7. Documentation
+
+8. Example usage
+
+9. Build verification
+
+10. Commit message
+
+Wait for approval before beginning the next phase.
+
+Never skip phases.
+
+======================================================================
+FIRST TASK
+======================================================================
+
+Start with Phase 1.
+
+Design the complete software architecture.
+
+Produce:
+
+• System architecture
+• Crate dependency graph
+• Folder structure
+• Domain model
+• Data flow diagrams
+• Error handling strategy
+• Configuration strategy
+• Dependency Injection strategy
+• Performance strategy
+• Security model
+• Plugin architecture
+• Future extensibility strategy
+
+Do not write implementation code yet.
+
+Think like the maintainers of Git, Cargo, ripgrep, and Docker.
+
+The goal is to create the strongest architecture possible before writing a single line of code.
