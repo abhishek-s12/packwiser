@@ -4,3 +4,5 @@ Cargo.lock
 *.swp
 *.tmp
 .DS_Store
+idea.txt
+idea1.txt
