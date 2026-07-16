@@ -4,115 +4,110 @@
 [![License](https://img.shields.io/badge/License-MIT%20or%20Apache%202.0-blue.svg)](#license)
 [![Rust Edition](https://img.shields.io/badge/Rust-2024-orange.svg)](https://doc.rust-lang.org/edition-guide/rust-2024/index.html)
 
-**Secure. Intelligent. Reproducible Project Packaging.**
+**A single Rust CLI for packaging, scanning, signing, and documenting your release artifacts.**
 
-PackWiser is an industrial-grade project packaging toolchain and library designed to automate the process of bundling software repositories securely. It combines file ignoring, high-speed secrets scanning, reproducibility verification, package signing, and automatic SBOM (Software Bill of Materials) generation into a single unified CLI and programmatic API.
+Shipping a release usually means stitching together several tools: something to respect `.gitignore` rules, something to scan for leaked secrets, something to produce an SBOM, something to sign the artifact, and something to push it to storage. PackWiser combines those steps into one pipeline so you configure it once and run one command.
 
-Think of PackWiser as:
-> **Git** + **Docker Ignore** + **Cargo Package** + **npm pack** + **Gitleaks** + **ripgrep** + **zip/tar** + **Sigstore** + **SBOM Generator**
-> ... all combined into one high-performance Rust tool.
+> **Status:** early-stage / pre-1.0. The core pipeline works end-to-end (see [Roadmap](docs/ROADMAP.md) for what's still in progress). If you're evaluating this for production security-critical workflows, please read the code and open issues before relying on it — feedback from real usage is exactly what this project needs right now.
+
+---
+
+## Why PackWiser instead of the individual tools?
+
+If you're already happy composing `gitleaks` + `syft` + `cosign` + `goreleaser`, that's a completely reasonable setup — those are mature, widely-used tools. PackWiser's value is consolidation: one config file, one binary, one command, for teams that want fewer moving parts.
+
+| Capability | PackWiser | gitleaks | syft / cdxgen | cosign | goreleaser |
+|---|---|---|---|---|---|
+| Secrets scanning | ✅ | ✅ | ❌ | ❌ | ❌ |
+| SBOM (CycloneDX/SPDX) | ✅ | ❌ | ✅ | ❌ | ✅ (via syft) |
+| Artifact signing (Ed25519) | ✅ | ❌ | ❌ | ✅ | ✅ (via cosign) |
+| Reproducible archiving | ✅ | ❌ | ❌ | ❌ | ✅ |
+| Policy / quality gates | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Cloud upload (S3/GCS/Azure) | ✅ | ❌ | ❌ | ❌ | ✅ |
+| Single binary, no orchestration needed | ✅ | — | — | — | ✅ |
+| Production track record | 🆕 new | mature | mature | mature | mature |
+
+*(Verify each checkmark against your own test coverage before publishing — this table is a starting point, not a claim of parity.)*
 
 ---
 
 ## Key Features
 
-- 🧠 **Intelligent Environment Detection**: Auto-detects 20+ development frameworks and environments to apply optimal ignore filters and metadata mapping.
-- 🛡️ **Built-in Security Scanning**: Scans workspace contents using high-speed regex engines and Shannon entropy calculation to mask or reject packages containing leaked credentials/secrets.
-- 🗜️ **Reproducible Archiving**: Packs codebases into exact, deterministic zip, tar, tar.gz, tar.xz, or tar.zst formats. Includes built-in Zip Slip path traversal protections.
-- 📊 **Software Bill of Materials (SBOM)**: Automatically analyzes workspace configurations and generates compliant CycloneDX or SPDX JSON bills of materials.
-- 🔏 **Cryptographic Signing**: Sign packages using Ed25519 signatures and verify integrity on the receiving end.
-- 📈 **Quality & Policy Compliance**: Analyzes packaging contents to compute a quality index score and enforces policy threshold gates (e.g. max archive size, minimum quality score, strict no-secrets rules).
-- ☁️ **Native Cloud Uploaders**: Built-in support for uploading build outputs directly to S3, GCS, Azure, or GitHub releases.
+- **Environment-aware ignore filtering** — parses `.gitignore` and custom glob rules, with auto-detection for common project layouts.
+- **Secrets scanning** — regex + Shannon entropy heuristics to catch leaked credentials before they ship.
+- **Reproducible archiving** — deterministic zip / tar / tar.gz / tar.xz / tar.zst output, with Zip Slip path-traversal protection.
+- **SBOM generation** — CycloneDX and SPDX JSON output from your workspace's dependency metadata.
+- **Ed25519 signing** — sign packages and verify integrity on the receiving end.
+- **Policy gates** — enforce thresholds like max archive size, minimum quality score, or "no secrets, no exceptions."
+- **Cloud uploaders** — push build output to S3, GCS, Azure, or GitHub Releases.
 
 ---
 
-## Workspace Architecture
-
-PackWiser is designed following **Clean Architecture** patterns, leveraging a highly modular Rust workspace layout:
-
-```text
-       CLI (packwiser-cli)
-               ↓
-     Application Commands
-               ↓
-   Application Services (PackagingPipeline)
-               ↓
-       Core Domain (packwiser-core)
-               ↓
-     Infrastructure Adapters
-  (ignore, scanner, compressor, uploader, etc.)
-```
-
-- **`packwiser-core`**: Defines the central interfaces, domain models, and pipeline orchestrator.
-- **`packwiser-cli`**: Standard command-line parser, styling, and colorized output interface.
-- **`packwiser-ignore`**: Recursively parses `.gitignore` and custom inclusion/exclusion glob rules.
-- **`packwiser-scanner`**: Scans files for secret strings using custom regex and entropy heuristics.
-- **`packwiser-compressor`**: High-performance streaming compression formats.
-- **`packwiser-checksum`**: Cryptographic digests (SHA-256, BLAKE3, etc.).
-- **`packwiser-manifest`**: Gathers environment-specific workspace metadata.
-- **`packwiser-quality`**: Calculates a comprehensive quality score for the package.
-- **`packwiser-policy`**: Validates packages against custom compliance rules.
-- **`packwiser-signature`**: Ed25519 digital signature signing and validation.
-- **`packwiser-uploader`**: Push artifacts to cloud storage (S3, GCS, etc.).
-- **`packwiser-sbom`**: Produces CycloneDX and SPDX dependency matrices.
-- **`packwiser-license`**: Scans for license files and verifies SPDX compatibility.
-- **`packwiser-plugin`**: Dynamically loads hooks and extensions.
-
----
-
-## Installation
-
-Building from source requires the latest stable Rust toolchain (Rust 2024 edition):
+## Quick Start
 
 ```bash
-# Clone the repository
+# Clone and build (requires Rust 2024 edition toolchain)
 git clone https://github.com/abhishek-s12/packwiser.git
 cd packwiser
-
-# Build release binary
 cargo build --release
-
-# Run the CLI
 ./target/release/packwiser --help
 ```
 
----
+### Package a workspace
 
-## CLI Quick Start
+Pack a directory into a zstd-compressed tarball, sign it, and enforce compliance thresholds in one step:
 
-### 1. Package a Workspace
-Pack a target directory into a secure zstd-compressed tarball, signs it using an Ed25519 private key, and validates it against compliance thresholds:
 ```bash
-packwiser package ./my-project ./build/output.tar.zst --format tar.zst --sign ./keys/private.pem
+packwiser package ./my-project ./build/output.tar.zst \
+  --format tar.zst \
+  --sign ./keys/private.pem
 ```
 
-### 2. Scan for Leaked Secrets
-Scan a workspace directory for compliance, licenses, and credential leaks without writing any output archive:
+<details>
+<summary>Example output</summary>
+
+```
+$ packwiser package ./my-project ./build/output.tar.zst --format tar.zst --sign ./keys/private.pem
+
+[ignore]   using .gitignore + 3 custom rules — 142 files matched, 891 excluded
+[scanner]  scanning 142 files for secrets... none found
+[sbom]     generated CycloneDX SBOM (37 dependencies)
+[compress] tar.zst — 4.2 MB → 1.1 MB
+[sign]     signed with Ed25519 key ./keys/private.pem
+[quality]  score: 94/100 (threshold: 90) — PASS
+
+Package created: ./build/output.tar.zst
+```
+
+*(Replace with real CLI output once you've run it — placeholder shown for illustration.)*
+</details>
+
+### Scan without packaging
+
 ```bash
 packwiser scan ./my-project
 ```
 
-### 3. Verify a Package Signature
-Verify the signature of a packed archive to confirm authenticity and extract its package metadata:
+### Verify a signed package
+
 ```bash
 packwiser verify ./build/output.tar.zst
 ```
 
-### 4. Check Config
-Inspect active configuration profiles merged from hierarchical `packwiser.toml` settings:
+### Inspect merged config
+
 ```bash
 packwiser config release
 ```
 
-*For more details on CLI options, see the [CLI Reference Guide](docs/CLI_REFERENCE.md).*
+Full flag reference: [CLI Reference Guide](docs/CLI_REFERENCE.md)
 
 ---
 
-## Programmatic Library Integration
+## Using PackWiser as a Library
 
-You can easily integrate `packwiser-core` orchestrators and infrastructure crates directly into your own Rust systems.
+Each pipeline stage is a separate crate, so you can pull in only what you need:
 
-Add it to your `Cargo.toml`:
 ```toml
 [dependencies]
 packwiser-core = { path = "./crates/core" }
@@ -122,7 +117,6 @@ packwiser-compressor = { path = "./crates/compressor" }
 packwiser-uploader = { path = "./crates/uploader" }
 ```
 
-Use the `PackagingPipeline` model in your code:
 ```rust
 use std::path::Path;
 use packwiser_core::{PackagingPipeline, PackagingConfig};
@@ -135,13 +129,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let workspace = Path::new("./my-project");
     let output_zip = Path::new("./build/package.zip");
 
-    // Initialize adapters
     let ignore = GitIgnoreMatcher::new(workspace)?;
     let scanner = RegexSecretScanner::new(vec![]);
     let compressor = ZipCompressor::new();
     let uploader = DryRunUploader;
 
-    // Define pipeline configuration
     let config = PackagingConfig {
         project_name: "my-app".to_string(),
         version: "0.1.0".to_string(),
@@ -152,37 +144,74 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         no_secrets: true,
     };
 
-    // Run the pipeline
     let pipeline = PackagingPipeline::new(ignore, scanner, compressor, uploader);
     let manifest = pipeline.execute(&config, workspace, output_zip)?;
 
-    println!("Package created successfully! Quality Score: {}/100", manifest.score);
+    println!("Package created. Quality score: {}/100", manifest.score);
     Ok(())
 }
 ```
 
-*For more integration patterns, refer to the [API Guide](docs/API_GUIDE.md).*
+More patterns: [API Guide](docs/API_GUIDE.md)
+
+---
+
+## Architecture
+
+Built as a modular Rust workspace following Clean Architecture:
+
+```
+     CLI (packwiser-cli)
+             ↓
+   Application Commands
+             ↓
+ Application Services (PackagingPipeline)
+             ↓
+     Core Domain (packwiser-core)
+             ↓
+   Infrastructure Adapters
+(ignore, scanner, compressor, uploader, etc.)
+```
+
+| Crate | Responsibility |
+|---|---|
+| `packwiser-core` | Central interfaces, domain models, pipeline orchestrator |
+| `packwiser-cli` | Command-line parsing and output |
+| `packwiser-ignore` | `.gitignore` + custom glob rule parsing |
+| `packwiser-scanner` | Secret detection (regex + entropy heuristics) |
+| `packwiser-compressor` | Streaming compression |
+| `packwiser-checksum` | SHA-256 / BLAKE3 digests |
+| `packwiser-manifest` | Workspace metadata collection |
+| `packwiser-quality` | Package quality scoring |
+| `packwiser-policy` | Compliance rule enforcement |
+| `packwiser-signature` | Ed25519 signing/validation |
+| `packwiser-uploader` | Cloud storage push (S3, GCS, etc.) |
+| `packwiser-sbom` | CycloneDX / SPDX generation |
+| `packwiser-license` | License file detection + SPDX compatibility |
+| `packwiser-plugin` | Hook/extension loading |
+
+Details: [Architecture Overview](docs/ARCHITECTURE.md)
 
 ---
 
 ## Documentation
 
-Comprehensive guides are available in the `docs/` directory:
+- [Architecture Overview](docs/ARCHITECTURE.md)
+- [CLI Reference](docs/CLI_REFERENCE.md)
+- [API Guide](docs/API_GUIDE.md)
+- [Roadmap](docs/ROADMAP.md)
+- [Contributing](docs/CONTRIBUTING.md)
+- [Security Policy](docs/SECURITY.md)
 
-- 🏗️ **[Architecture Overview](docs/ARCHITECTURE.md)**: Deep dive into layers, modules, and security design choices.
-- ⚙️ **[CLI Reference](docs/CLI_REFERENCE.md)**: Detailed breakdown of arguments, global flags, and commands.
-- 🔌 **[API Guide](docs/API_GUIDE.md)**: Library integration and custom driver implementation details.
-- 🗺️ **[Development Roadmap](docs/ROADMAP.md)**: Feature priorities, upcoming integrations, and platform targets.
-- 🤝 **[Contributing Guidelines](docs/CONTRIBUTING.md)**: Coding guidelines, test requirements, and workflow instructions.
-- 🔒 **[Security Policy](docs/SECURITY.md)**: Reporting vulnerability disclosures and cryptographic guidelines.
+## Contributing
 
----
+Issues and PRs welcome — especially real-world feedback from trying this on an actual project. See [CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
 ## License
 
-This project is licensed under either:
+Licensed under either of:
 
-* Apache License, Version 2.0 ([LICENSE-APACHE](http://www.apache.org/licenses/LICENSE-2.0))
-* MIT license ([LICENSE-MIT](http://opensource.org/licenses/MIT))
+- [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+- [MIT License](http://opensource.org/licenses/MIT)
 
 at your option.
