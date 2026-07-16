@@ -107,30 +107,31 @@ impl ProjectDetector for HeuristicProjectDetector {
 
                     // Parse package dependencies for web frameworks
                     if let Ok(content) = fs::read_to_string(&path)
-                        && let Ok(pkg) = serde_json::from_str::<DummyPackageJson>(&content) {
-                            let has_dep = |name: &str| {
-                                pkg.dependencies.contains_key(name)
-                                    || pkg.dev_dependencies.contains_key(name)
-                            };
-                            if has_dep("next") {
-                                stacks.insert(ProjectStack::NextJs);
-                                recommended_ignores.insert("/.next".to_string());
-                            }
-                            if has_dep("react") {
-                                stacks.insert(ProjectStack::React);
-                            }
-                            if has_dep("vue") {
-                                stacks.insert(ProjectStack::Vue);
-                            }
-                            if has_dep("nuxt") {
-                                stacks.insert(ProjectStack::Nuxt);
-                                recommended_ignores.insert("/.nuxt".to_string());
-                            }
-                            if has_dep("@angular/core") {
-                                stacks.insert(ProjectStack::Angular);
-                                recommended_ignores.insert("/.cache".to_string());
-                            }
+                        && let Ok(pkg) = serde_json::from_str::<DummyPackageJson>(&content)
+                    {
+                        let has_dep = |name: &str| {
+                            pkg.dependencies.contains_key(name)
+                                || pkg.dev_dependencies.contains_key(name)
+                        };
+                        if has_dep("next") {
+                            stacks.insert(ProjectStack::NextJs);
+                            recommended_ignores.insert("/.next".to_string());
                         }
+                        if has_dep("react") {
+                            stacks.insert(ProjectStack::React);
+                        }
+                        if has_dep("vue") {
+                            stacks.insert(ProjectStack::Vue);
+                        }
+                        if has_dep("nuxt") {
+                            stacks.insert(ProjectStack::Nuxt);
+                            recommended_ignores.insert("/.nuxt".to_string());
+                        }
+                        if has_dep("@angular/core") {
+                            stacks.insert(ProjectStack::Angular);
+                            recommended_ignores.insert("/.cache".to_string());
+                        }
+                    }
                 } else if name_str == "requirements.txt"
                     || name_str == "pyproject.toml"
                     || name_str == "poetry.lock"
@@ -171,9 +172,10 @@ impl ProjectDetector for HeuristicProjectDetector {
                     }
 
                     if let Ok(content) = fs::read_to_string(&path)
-                        && content.contains("spring-boot") {
-                            stacks.insert(ProjectStack::SpringBoot);
-                        }
+                        && content.contains("spring-boot")
+                    {
+                        stacks.insert(ProjectStack::SpringBoot);
+                    }
                 } else if path
                     .extension()
                     .is_some_and(|ext| ext == "csproj" || ext == "sln")
@@ -184,12 +186,13 @@ impl ProjectDetector for HeuristicProjectDetector {
                     manifest_counts += 1;
                 } else if name_str == "pubspec.yaml" {
                     if let Ok(content) = fs::read_to_string(&path)
-                        && content.contains("flutter:") {
-                            stacks.insert(ProjectStack::Flutter);
-                            recommended_ignores.insert("/.dart_tool".to_string());
-                            recommended_ignores.insert("/build".to_string());
-                            manifest_counts += 1;
-                        }
+                        && content.contains("flutter:")
+                    {
+                        stacks.insert(ProjectStack::Flutter);
+                        recommended_ignores.insert("/.dart_tool".to_string());
+                        recommended_ignores.insert("/build".to_string());
+                        manifest_counts += 1;
+                    }
                 } else if name_str == "Package.swift"
                     || path
                         .extension()

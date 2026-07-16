@@ -37,44 +37,47 @@ pub fn validate_policy(
 
     // 1. Validate minimum score
     if let Some(min_score) = policy.minimum_score
-        && manifest.score < min_score {
-            violations.push(format!(
-                "Quality score {} is below the required minimum of {}",
-                manifest.score, min_score
-            ));
-        }
+        && manifest.score < min_score
+    {
+        violations.push(format!(
+            "Quality score {} is below the required minimum of {}",
+            manifest.score, min_score
+        ));
+    }
 
     // 2. Validate maximum archive size
     if let Some(max_size) = policy.max_archive_size
-        && archive_size > max_size {
-            violations.push(format!(
-                "Archive size ({} bytes) exceeds the allowed limit of {} bytes",
-                archive_size, max_size
-            ));
-        }
+        && archive_size > max_size
+    {
+        violations.push(format!(
+            "Archive size ({} bytes) exceeds the allowed limit of {} bytes",
+            archive_size, max_size
+        ));
+    }
 
     // 3. Validate secrets policy
     if let Some(true) = policy.no_secrets
-        && !manifest.secrets.is_empty() {
-            violations.push(format!(
-                "Security policy violation: {} credential leak(s) detected",
-                manifest.secrets.len()
-            ));
-        }
+        && !manifest.secrets.is_empty()
+    {
+        violations.push(format!(
+            "Security policy violation: {} credential leak(s) detected",
+            manifest.secrets.len()
+        ));
+    }
 
     // 4. Validate checksums requirement
     if let Some(true) = policy.require_checksum
-        && manifest.checksums.is_empty() {
-            violations
-                .push("Integrity policy violation: package checksums are required".to_string());
-        }
+        && manifest.checksums.is_empty()
+    {
+        violations.push("Integrity policy violation: package checksums are required".to_string());
+    }
 
     // 5. Validate signature requirement
     if let Some(true) = policy.require_signature
-        && !is_signed {
-            violations
-                .push("Authenticity policy violation: package signature is required".to_string());
-        }
+        && !is_signed
+    {
+        violations.push("Authenticity policy violation: package signature is required".to_string());
+    }
 
     if violations.is_empty() {
         Ok(())

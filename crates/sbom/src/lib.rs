@@ -61,27 +61,28 @@ impl DefaultSbomGenerator {
 
         // Also check workspace dependencies
         if let Some(workspace) = parsed.get("workspace").and_then(|w| w.as_table())
-            && let Some(table) = workspace.get("dependencies").and_then(|d| d.as_table()) {
-                for (name, val) in table {
-                    let version = match val {
-                        Value::String(s) => s.clone(),
-                        Value::Table(t) => {
-                            if let Some(Value::String(ver)) = t.get("version") {
-                                ver.clone()
-                            } else {
-                                "workspace-spec".to_string()
-                            }
+            && let Some(table) = workspace.get("dependencies").and_then(|d| d.as_table())
+        {
+            for (name, val) in table {
+                let version = match val {
+                    Value::String(s) => s.clone(),
+                    Value::Table(t) => {
+                        if let Some(Value::String(ver)) = t.get("version") {
+                            ver.clone()
+                        } else {
+                            "workspace-spec".to_string()
                         }
-                        _ => "workspace-spec".to_string(),
-                    };
-                    let purl = Some(format!("pkg:cargo/{}@{}", name, version));
-                    deps.push(Dependency {
-                        name: name.clone(),
-                        version,
-                        purl,
-                    });
-                }
+                    }
+                    _ => "workspace-spec".to_string(),
+                };
+                let purl = Some(format!("pkg:cargo/{}@{}", name, version));
+                deps.push(Dependency {
+                    name: name.clone(),
+                    version,
+                    purl,
+                });
             }
+        }
 
         Ok(deps)
     }
@@ -170,29 +171,32 @@ impl SbomGenerator for DefaultSbomGenerator {
         // 1. Scan for Cargo.toml
         let cargo_path = workspace_root.join("Cargo.toml");
         if cargo_path.exists()
-            && let Ok(mut deps) = self.parse_cargo_toml(&cargo_path) {
-                for dep in deps.drain(..) {
-                    checked.insert(format!("cargo-{}", dep.name), dep);
-                }
+            && let Ok(mut deps) = self.parse_cargo_toml(&cargo_path)
+        {
+            for dep in deps.drain(..) {
+                checked.insert(format!("cargo-{}", dep.name), dep);
             }
+        }
 
         // 2. Scan for package.json
         let npm_path = workspace_root.join("package.json");
         if npm_path.exists()
-            && let Ok(mut deps) = self.parse_package_json(&npm_path) {
-                for dep in deps.drain(..) {
-                    checked.insert(format!("npm-{}", dep.name), dep);
-                }
+            && let Ok(mut deps) = self.parse_package_json(&npm_path)
+        {
+            for dep in deps.drain(..) {
+                checked.insert(format!("npm-{}", dep.name), dep);
             }
+        }
 
         // 3. Scan for requirements.txt
         let py_path = workspace_root.join("requirements.txt");
         if py_path.exists()
-            && let Ok(mut deps) = self.parse_requirements_txt(&py_path) {
-                for dep in deps.drain(..) {
-                    checked.insert(format!("pypi-{}", dep.name), dep);
-                }
+            && let Ok(mut deps) = self.parse_requirements_txt(&py_path)
+        {
+            for dep in deps.drain(..) {
+                checked.insert(format!("pypi-{}", dep.name), dep);
             }
+        }
 
         for (_, dep) in checked {
             all_deps.push(dep);

@@ -1,8 +1,8 @@
+use packwiser_core::PackageManifest;
+use packwiser_integration_tests::create_mock_project;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::tempdir;
-use packwiser_integration_tests::create_mock_project;
-use packwiser_core::PackageManifest;
 
 fn get_golden_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -28,7 +28,9 @@ fn test_manifest_golden_regression() {
         checksums: vec![
             ("Cargo.toml".to_string(), "sha256-dummy".to_string()),
             ("src/main.rs".to_string(), "sha256-dummy-2".to_string()),
-        ].into_iter().collect(),
+        ]
+        .into_iter()
+        .collect(),
         files: vec![
             PathBuf::from("src/main.rs"),
             PathBuf::from("src/lib.rs"),
@@ -57,14 +59,13 @@ fn test_manifest_golden_regression() {
     }
 
     let expected = fs::read_to_string(&golden_file).unwrap();
-    
+
     // Parse to serde_json::Value to compare semantically, bypassing Map ordering non-determinism
     let serialized_val: serde_json::Value = serde_json::from_str(&serialized).unwrap();
     let expected_val: serde_json::Value = serde_json::from_str(&expected).unwrap();
 
     assert_eq!(
-        serialized_val, 
-        expected_val, 
+        serialized_val, expected_val,
         "Golden JSON mismatch! Run with UPDATE_GOLDEN=1 environment variable to update."
     );
 }

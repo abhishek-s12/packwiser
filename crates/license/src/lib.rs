@@ -65,24 +65,25 @@ impl HeuristicLicenseScanner {
     pub fn detect_license(&self, text: &str) -> Option<(String, f32)> {
         // 1. Direct SPDX identifier match (highest confidence)
         if let Some(captures) = self.spdx_regex.captures(text)
-            && let Some(m) = captures.get(1) {
-                let license = m.as_str().trim();
-                // Map common inputs to clean keys
-                let mapped = match license.to_uppercase().as_str() {
-                    "MIT" => "MIT",
-                    "APACHE-2.0" | "APACHE2" => "Apache-2.0",
-                    "BSD-3-CLAUSE" => "BSD-3-Clause",
-                    "BSD-2-CLAUSE" => "BSD-2-Clause",
-                    "GPL-3.0" | "GPLV3" => "GPL-3.0",
-                    "GPL-2.0" | "GPLV2" => "GPL-2.0",
-                    "LGPL-3.0" | "LGPLV3" => "LGPL-3.0",
-                    "LGPL-2.1" | "LGPLV2.1" => "LGPL-2.1",
-                    "AGPL-3.0" | "AGPLV3" => "AGPL-3.0",
-                    "MPL-2.0" | "MPLV2" => "MPL-2.0",
-                    _ => license,
-                };
-                return Some((mapped.to_string(), 1.0));
-            }
+            && let Some(m) = captures.get(1)
+        {
+            let license = m.as_str().trim();
+            // Map common inputs to clean keys
+            let mapped = match license.to_uppercase().as_str() {
+                "MIT" => "MIT",
+                "APACHE-2.0" | "APACHE2" => "Apache-2.0",
+                "BSD-3-CLAUSE" => "BSD-3-Clause",
+                "BSD-2-CLAUSE" => "BSD-2-Clause",
+                "GPL-3.0" | "GPLV3" => "GPL-3.0",
+                "GPL-2.0" | "GPLV2" => "GPL-2.0",
+                "LGPL-3.0" | "LGPLV3" => "LGPL-3.0",
+                "LGPL-2.1" | "LGPLV2.1" => "LGPL-2.1",
+                "AGPL-3.0" | "AGPLV3" => "AGPL-3.0",
+                "MPL-2.0" | "MPLV2" => "MPL-2.0",
+                _ => license,
+            };
+            return Some((mapped.to_string(), 1.0));
+        }
 
         // 2. Exact block header matching
         if self.mit_regexes[1].is_match(text) {

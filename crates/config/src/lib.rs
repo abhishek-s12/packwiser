@@ -109,16 +109,18 @@ impl ConfigLoader for DefaultConfigLoader {
         // 1. Try loading Global configuration (lowest priority)
         let global_path = self.resolve_global_config_path();
         if global_path.exists()
-            && let Ok(global_cfg) = parse_config_file(&global_path) {
-                merge_config(&mut resolved, global_cfg);
-            }
+            && let Ok(global_cfg) = parse_config_file(&global_path)
+        {
+            merge_config(&mut resolved, global_cfg);
+        }
 
         // 2. Try loading User configuration
         if let Some(user_path) = self.resolve_user_config_path()
             && user_path.exists()
-                && let Ok(user_cfg) = parse_config_file(&user_path) {
-                    merge_config(&mut resolved, user_cfg);
-                }
+            && let Ok(user_cfg) = parse_config_file(&user_path)
+        {
+            merge_config(&mut resolved, user_cfg);
+        }
 
         // 3. Try loading Workspace configuration (highest priority)
         let workspace_path = workspace_root.join("packwiser.toml");

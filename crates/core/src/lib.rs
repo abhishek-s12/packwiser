@@ -695,8 +695,7 @@ where
         }
 
         // 2. Perform compression into output archive path
-        let output_file =
-            File::create(&opts.output_archive).map_err(CompressionError::Io)?;
+        let output_file = File::create(&opts.output_archive).map_err(CompressionError::Io)?;
         let mut writer = std::io::BufWriter::new(output_file);
 
         let _ = self
@@ -778,9 +777,7 @@ where
                     .unwrap_or("")
             ));
             let mut sig_file = File::create(sig_path).map_err(CompressionError::Io)?;
-            sig_file
-                .write_all(&sig)
-                .map_err(CompressionError::Io)?;
+            sig_file.write_all(&sig).map_err(CompressionError::Io)?;
             sig_file.flush().map_err(CompressionError::Io)?;
 
             Some(sig)

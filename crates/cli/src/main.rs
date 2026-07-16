@@ -103,10 +103,7 @@ enum Commands {
 
 struct HasherWrapper;
 impl Hasher for HasherWrapper {
-    fn calculate(
-        &self,
-        reader: &mut dyn Read,
-    ) -> Result<HashMap<String, String>, std::io::Error> {
+    fn calculate(&self, reader: &mut dyn Read) -> Result<HashMap<String, String>, std::io::Error> {
         let res = packwiser_checksum::calculate_checksums(reader)?;
         let mut map = HashMap::new();
         map.insert("sha256".to_string(), res.sha256);
