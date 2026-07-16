@@ -3,11 +3,10 @@
 //! Enforces decoupling by letting users declare custom languages, regex secret rules,
 //! and command hooks that delegate compression and uploading to subprocesses.
 
+use packwiser_core::{PluginEngine, PluginError, PluginManifest};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use toml;
-use packwiser_core::{PluginEngine, PluginManifest, PluginError};
 
 /// Default implementation of the `PluginEngine` trait.
 #[derive(Debug, Clone, Copy, Default)]
@@ -70,9 +69,9 @@ impl PluginEngine for DefaultPluginEngine {
 
         let mut plugins = Vec::new();
 
-        for entry in fs::read_dir(plugins_dir).map_err(|e| {
-            PluginError::Read(format!("Failed to read plugins directory: {}", e))
-        })? {
+        for entry in fs::read_dir(plugins_dir)
+            .map_err(|e| PluginError::Read(format!("Failed to read plugins directory: {}", e)))?
+        {
             let entry = entry.map_err(|e| {
                 PluginError::Read(format!("Failed to access plugin directory entry: {}", e))
             })?;
@@ -81,10 +80,16 @@ impl PluginEngine for DefaultPluginEngine {
                 let manifest_path = path.join("plugin.toml");
                 if manifest_path.exists() {
                     let content = fs::read_to_string(&manifest_path).map_err(|e| {
-                        PluginError::Read(format!("Failed to read plugin manifest {:?}: {}", manifest_path, e))
+                        PluginError::Read(format!(
+                            "Failed to read plugin manifest {:?}: {}",
+                            manifest_path, e
+                        ))
                     })?;
                     let manifest: PluginManifest = toml::from_str(&content).map_err(|e| {
-                        PluginError::Parse(format!("Failed to parse plugin manifest {:?}: {}", manifest_path, e))
+                        PluginError::Parse(format!(
+                            "Failed to parse plugin manifest {:?}: {}",
+                            manifest_path, e
+                        ))
                     })?;
                     plugins.push(manifest);
                 }
@@ -196,6 +201,10 @@ uploaders = []
         // Placeholders replacement
         let uploader_cmd = "echo '{archive} to {uri}'";
         let archive = Path::new("test.zip");
-        assert!(engine.execute_uploader(uploader_cmd, archive, "s3://mybucket").is_ok());
+        assert!(
+            engine
+                .execute_uploader(uploader_cmd, archive, "s3://mybucket")
+                .is_ok()
+        );
     }
 }

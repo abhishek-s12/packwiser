@@ -3,11 +3,11 @@
 //! Exposes heuristics to detect standard software licenses (MIT, Apache, BSD, GPL, LGPL, AGPL, MPL)
 //! from source comments and standalone license descriptors.
 
+use packwiser_core::{FileEntry, LicenseError, LicenseFinding, LicenseReport, LicenseScanner};
+use regex::Regex;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use regex::Regex;
-use packwiser_core::{FileEntry, LicenseFinding, LicenseReport, LicenseScanner, LicenseError};
 
 /// Concrete license compliance scanner implementation.
 pub struct HeuristicLicenseScanner {
@@ -35,7 +35,8 @@ impl HeuristicLicenseScanner {
                 Regex::new(r"(?i)http://www\.apache\.org/licenses/LICENSE-2\.0").unwrap(),
             ],
             bsd_regexes: vec![
-                Regex::new(r"(?i)redistribution\s+and\s+use\s+in\s+source\s+and\s+binary\s+forms").unwrap(),
+                Regex::new(r"(?i)redistribution\s+and\s+use\s+in\s+source\s+and\s+binary\s+forms")
+                    .unwrap(),
                 Regex::new(r"(?i)bsd\s+2-clause").unwrap(),
                 Regex::new(r"(?i)bsd\s+3-clause").unwrap(),
             ],
@@ -63,8 +64,8 @@ impl HeuristicLicenseScanner {
     /// Returns `(license_type, confidence)` if a match is determined.
     pub fn detect_license(&self, text: &str) -> Option<(String, f32)> {
         // 1. Direct SPDX identifier match (highest confidence)
-        if let Some(captures) = self.spdx_regex.captures(text) {
-            if let Some(m) = captures.get(1) {
+        if let Some(captures) = self.spdx_regex.captures(text)
+            && let Some(m) = captures.get(1) {
                 let license = m.as_str().trim();
                 // Map common inputs to clean keys
                 let mapped = match license.to_uppercase().as_str() {
@@ -82,7 +83,6 @@ impl HeuristicLicenseScanner {
                 };
                 return Some((mapped.to_string(), 1.0));
             }
-        }
 
         // 2. Exact block header matching
         if self.mit_regexes[1].is_match(text) {
@@ -141,21 +141,31 @@ impl LicenseScanner for HeuristicLicenseScanner {
                 continue;
             }
 
-            let file_name = file.relative_path.file_name()
+            let file_name = file
+                .relative_path
+                .file_name()
                 .and_then(|n| n.to_str())
                 .unwrap_or("");
-            
+
             let is_root_license_file = file.relative_path.parent() == Some(Path::new(""))
                 && (file_name.to_ascii_uppercase().starts_with("LICENSE")
                     || file_name.to_ascii_uppercase().starts_with("COPYING"));
 
-            let mut f = File::open(&file.absolute_path)
-                .map_err(|e| LicenseError::Read(format!("Failed to open file {:?}: {}", file.absolute_path, e)))?;
-            
+            let mut f = File::open(&file.absolute_path).map_err(|e| {
+                LicenseError::Read(format!(
+                    "Failed to open file {:?}: {}",
+                    file.absolute_path, e
+                ))
+            })?;
+
             // Read first 8KB (headers or root license contents are small)
             let mut buf = vec![0; 8192];
-            let read_bytes = f.read(&mut buf)
-                .map_err(|e| LicenseError::Read(format!("Failed to read file {:?}: {}", file.absolute_path, e)))?;
+            let read_bytes = f.read(&mut buf).map_err(|e| {
+                LicenseError::Read(format!(
+                    "Failed to read file {:?}: {}",
+                    file.absolute_path, e
+                ))
+            })?;
             buf.truncate(read_bytes);
 
             let text = String::from_utf8_lossy(&buf);
@@ -179,7 +189,8 @@ impl LicenseScanner for HeuristicLicenseScanner {
             root_lic
         } else {
             // Heuristic fallback: the most frequent license found
-            license_counts.into_iter()
+            license_counts
+                .into_iter()
                 .max_by_key(|&(_, count)| count)
                 .map(|(lic, _)| lic)
                 .unwrap_or_else(|| "Unknown".to_string())
@@ -195,14 +206,14 @@ impl LicenseScanner for HeuristicLicenseScanner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::tempdir;
     use std::fs;
     use std::path::PathBuf;
+    use tempfile::tempdir;
 
     #[test]
     fn test_detect_license_spdx() {
         let scanner = HeuristicLicenseScanner::new();
-        
+
         let mit_header = "// SPDX-License-Identifier: MIT\nfn main() {}";
         let (lic, conf) = scanner.detect_license(mit_header).unwrap();
         assert_eq!(lic, "MIT");
@@ -217,13 +228,15 @@ mod tests {
     #[test]
     fn test_detect_license_keywords() {
         let scanner = HeuristicLicenseScanner::new();
-        
-        let mit_text = "Permission is hereby granted, free of charge, to any person obtaining a copy...";
+
+        let mit_text =
+            "Permission is hereby granted, free of charge, to any person obtaining a copy...";
         let (lic, conf) = scanner.detect_license(mit_text).unwrap();
         assert_eq!(lic, "MIT");
         assert_eq!(conf, 0.95);
 
-        let mpl_text = "This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.";
+        let mpl_text =
+            "This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.";
         let (lic, conf) = scanner.detect_license(mpl_text).unwrap();
         assert_eq!(lic, "MPL-2.0");
         assert_eq!(conf, 0.8);
@@ -232,7 +245,7 @@ mod tests {
     #[test]
     fn test_scan_license_findings() {
         let temp_dir = tempdir().unwrap();
-        
+
         let file1 = temp_dir.path().join("lib.rs");
         fs::write(&file1, "// SPDX-License-Identifier: MIT\n").unwrap();
 

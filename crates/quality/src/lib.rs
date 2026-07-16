@@ -45,9 +45,9 @@ pub fn calculate_quality_score(manifest: &PackageManifest) -> u8 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use packwiser_core::SecretLeak;
     use std::collections::HashMap;
     use std::path::PathBuf;
-    use packwiser_core::SecretLeak;
 
     fn base_manifest() -> PackageManifest {
         PackageManifest {

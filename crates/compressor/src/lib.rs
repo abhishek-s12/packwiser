@@ -2,9 +2,9 @@
 //!
 //! Exposes streaming compressor adapters for ZIP, Tar, Tar.Gz, Tar.Xz, and Tar.Zst.
 
+use packwiser_core::{CompressionError, Compressor, FileEntry};
 use std::fs::File;
 use std::io::{Read, Write};
-use packwiser_core::{CompressionError, Compressor, FileEntry};
 
 /// Supported archive formats.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,13 +54,16 @@ impl Compressor for ZipCompressor {
         let mut total_written = 0;
 
         // Use standard zip::write::SimpleFileOptions in modern zip releases (or fallback to FileOptions)
-        let options = zip::write::FileOptions::<()>::default()
-            .compression_method(self.level);
+        let options = zip::write::FileOptions::<()>::default().compression_method(self.level);
 
         for file in files {
             let mut f = File::open(&file.absolute_path)?;
-            let name_str = file.relative_path.to_str()
-                .ok_or_else(|| CompressionError::InvalidPath(format!("Invalid path name: {:?}", file.relative_path)))?;
+            let name_str = file.relative_path.to_str().ok_or_else(|| {
+                CompressionError::InvalidPath(format!(
+                    "Invalid path name: {:?}",
+                    file.relative_path
+                ))
+            })?;
 
             zip.start_file(name_str, options)
                 .map_err(|e| CompressionError::Encoding(e.to_string()))?;
@@ -77,7 +80,8 @@ impl Compressor for ZipCompressor {
             }
         }
 
-        zip.finish().map_err(|e| CompressionError::Encoding(e.to_string()))?;
+        zip.finish()
+            .map_err(|e| CompressionError::Encoding(e.to_string()))?;
 
         // Rewind the tempfile and stream it to the final output
         use std::io::Seek;
@@ -104,8 +108,12 @@ impl Compressor for TarCompressor {
 
         for file in files {
             let mut f = File::open(&file.absolute_path)?;
-            let name_str = file.relative_path.to_str()
-                .ok_or_else(|| CompressionError::InvalidPath(format!("Invalid path name: {:?}", file.relative_path)))?;
+            let name_str = file.relative_path.to_str().ok_or_else(|| {
+                CompressionError::InvalidPath(format!(
+                    "Invalid path name: {:?}",
+                    file.relative_path
+                ))
+            })?;
 
             let mut header = tar::Header::new_gnu();
             header.set_size(file.size);
@@ -153,8 +161,12 @@ impl Compressor for TarGzCompressor {
 
         for file in files {
             let mut f = File::open(&file.absolute_path)?;
-            let name_str = file.relative_path.to_str()
-                .ok_or_else(|| CompressionError::InvalidPath(format!("Invalid path name: {:?}", file.relative_path)))?;
+            let name_str = file.relative_path.to_str().ok_or_else(|| {
+                CompressionError::InvalidPath(format!(
+                    "Invalid path name: {:?}",
+                    file.relative_path
+                ))
+            })?;
 
             let mut header = tar::Header::new_gnu();
             header.set_size(file.size);
@@ -203,8 +215,12 @@ impl Compressor for TarXzCompressor {
 
         for file in files {
             let mut f = File::open(&file.absolute_path)?;
-            let name_str = file.relative_path.to_str()
-                .ok_or_else(|| CompressionError::InvalidPath(format!("Invalid path name: {:?}", file.relative_path)))?;
+            let name_str = file.relative_path.to_str().ok_or_else(|| {
+                CompressionError::InvalidPath(format!(
+                    "Invalid path name: {:?}",
+                    file.relative_path
+                ))
+            })?;
 
             let mut header = tar::Header::new_gnu();
             header.set_size(file.size);
@@ -253,8 +269,12 @@ impl Compressor for TarZstCompressor {
 
         for file in files {
             let mut f = File::open(&file.absolute_path)?;
-            let name_str = file.relative_path.to_str()
-                .ok_or_else(|| CompressionError::InvalidPath(format!("Invalid path name: {:?}", file.relative_path)))?;
+            let name_str = file.relative_path.to_str().ok_or_else(|| {
+                CompressionError::InvalidPath(format!(
+                    "Invalid path name: {:?}",
+                    file.relative_path
+                ))
+            })?;
 
             let mut header = tar::Header::new_gnu();
             header.set_size(file.size);
@@ -315,7 +335,9 @@ mod tests {
         let mut out_file = File::create(&out_path).unwrap();
 
         let compressor = ZipCompressor::default();
-        let bytes = compressor.compress(&files, &mut out_file, Box::new(|_| {})).unwrap();
+        let bytes = compressor
+            .compress(&files, &mut out_file, Box::new(|_| {}))
+            .unwrap();
 
         assert!(bytes > 0);
         assert!(out_path.exists());
@@ -331,7 +353,9 @@ mod tests {
         let mut out_file = File::create(&out_path).unwrap();
 
         let compressor = TarCompressor;
-        let bytes = compressor.compress(&files, &mut out_file, Box::new(|_| {})).unwrap();
+        let bytes = compressor
+            .compress(&files, &mut out_file, Box::new(|_| {}))
+            .unwrap();
 
         assert_eq!(bytes, 54);
         assert!(out_path.exists());
@@ -346,7 +370,9 @@ mod tests {
         let mut out_file = File::create(&out_path).unwrap();
 
         let compressor = TarGzCompressor::default();
-        let bytes = compressor.compress(&files, &mut out_file, Box::new(|_| {})).unwrap();
+        let bytes = compressor
+            .compress(&files, &mut out_file, Box::new(|_| {}))
+            .unwrap();
 
         assert_eq!(bytes, 54);
         assert!(out_path.exists());
@@ -361,7 +387,9 @@ mod tests {
         let mut out_file = File::create(&out_path).unwrap();
 
         let compressor = TarXzCompressor::default();
-        let bytes = compressor.compress(&files, &mut out_file, Box::new(|_| {})).unwrap();
+        let bytes = compressor
+            .compress(&files, &mut out_file, Box::new(|_| {}))
+            .unwrap();
 
         assert_eq!(bytes, 54);
         assert!(out_path.exists());
@@ -376,7 +404,9 @@ mod tests {
         let mut out_file = File::create(&out_path).unwrap();
 
         let compressor = TarZstCompressor::default();
-        let bytes = compressor.compress(&files, &mut out_file, Box::new(|_| {})).unwrap();
+        let bytes = compressor
+            .compress(&files, &mut out_file, Box::new(|_| {}))
+            .unwrap();
 
         assert_eq!(bytes, 54);
         assert!(out_path.exists());

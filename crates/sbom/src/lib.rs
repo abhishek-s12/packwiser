@@ -2,12 +2,12 @@
 //!
 //! Provides workspace package manifest parsing and standard formatting to CycloneDX and SPDX.
 
+use packwiser_core::{Dependency, SbomError, SbomFormat, SbomGenerator};
+use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use toml::Value;
-use serde_json::Value as JsonValue;
-use packwiser_core::{Dependency, SbomFormat, SbomGenerator, SbomError};
 
 /// Default implementation of the `SbomGenerator` trait.
 #[derive(Debug, Clone, Copy, Default)]
@@ -22,7 +22,7 @@ impl DefaultSbomGenerator {
     fn parse_cargo_toml(&self, path: &Path) -> Result<Vec<Dependency>, SbomError> {
         let content = fs::read_to_string(path)
             .map_err(|e| SbomError::Read(format!("Failed to read Cargo.toml: {}", e)))?;
-        
+
         let parsed: Value = toml::from_str(&content)
             .map_err(|e| SbomError::Parse(format!("Failed to parse Cargo.toml: {}", e)))?;
 
@@ -48,7 +48,7 @@ impl DefaultSbomGenerator {
                         }
                         _ => "unknown".to_string(),
                     };
-                    
+
                     let purl = Some(format!("pkg:cargo/{}@{}", name, version));
                     deps.push(Dependency {
                         name: name.clone(),
@@ -60,8 +60,8 @@ impl DefaultSbomGenerator {
         }
 
         // Also check workspace dependencies
-        if let Some(workspace) = parsed.get("workspace").and_then(|w| w.as_table()) {
-            if let Some(table) = workspace.get("dependencies").and_then(|d| d.as_table()) {
+        if let Some(workspace) = parsed.get("workspace").and_then(|w| w.as_table())
+            && let Some(table) = workspace.get("dependencies").and_then(|d| d.as_table()) {
                 for (name, val) in table {
                     let version = match val {
                         Value::String(s) => s.clone(),
@@ -82,7 +82,6 @@ impl DefaultSbomGenerator {
                     });
                 }
             }
-        }
 
         Ok(deps)
     }
@@ -170,33 +169,30 @@ impl SbomGenerator for DefaultSbomGenerator {
 
         // 1. Scan for Cargo.toml
         let cargo_path = workspace_root.join("Cargo.toml");
-        if cargo_path.exists() {
-            if let Ok(mut deps) = self.parse_cargo_toml(&cargo_path) {
+        if cargo_path.exists()
+            && let Ok(mut deps) = self.parse_cargo_toml(&cargo_path) {
                 for dep in deps.drain(..) {
                     checked.insert(format!("cargo-{}", dep.name), dep);
                 }
             }
-        }
 
         // 2. Scan for package.json
         let npm_path = workspace_root.join("package.json");
-        if npm_path.exists() {
-            if let Ok(mut deps) = self.parse_package_json(&npm_path) {
+        if npm_path.exists()
+            && let Ok(mut deps) = self.parse_package_json(&npm_path) {
                 for dep in deps.drain(..) {
                     checked.insert(format!("npm-{}", dep.name), dep);
                 }
             }
-        }
 
         // 3. Scan for requirements.txt
         let py_path = workspace_root.join("requirements.txt");
-        if py_path.exists() {
-            if let Ok(mut deps) = self.parse_requirements_txt(&py_path) {
+        if py_path.exists()
+            && let Ok(mut deps) = self.parse_requirements_txt(&py_path) {
                 for dep in deps.drain(..) {
                     checked.insert(format!("pypi-{}", dep.name), dep);
                 }
             }
-        }
 
         for (_, dep) in checked {
             all_deps.push(dep);
@@ -206,9 +202,13 @@ impl SbomGenerator for DefaultSbomGenerator {
         Ok(all_deps)
     }
 
-    fn generate_sbom(&self, dependencies: &[Dependency], format: SbomFormat) -> Result<String, SbomError> {
+    fn generate_sbom(
+        &self,
+        dependencies: &[Dependency],
+        format: SbomFormat,
+    ) -> Result<String, SbomError> {
         let timestamp = chrono::Utc::now().to_rfc3339();
-        
+
         match format {
             SbomFormat::CycloneDX => {
                 let components: Vec<serde_json::Value> = dependencies
@@ -250,7 +250,7 @@ impl SbomGenerator for DefaultSbomGenerator {
                     .map(|d| {
                         serde_json::json!({
                             "name": d.name,
-                            "SPDXID": format!("SPDXRef-Package-{}", d.name.replace('_', "-").replace('.', "-")),
+                            "SPDXID": format!("SPDXRef-Package-{}", d.name.replace(['_', '.'], "-")),
                             "versionInfo": d.version,
                             "downloadLocation": "NOASSERTION",
                             "filesAnalyzed": false,
@@ -339,7 +339,7 @@ gunicorn
         let deps = generator.parse_package_json(&file_path).unwrap();
 
         assert_eq!(deps.len(), 3);
-        
+
         let express = deps.iter().find(|d| d.name == "express").unwrap();
         assert_eq!(express.version, "^4.18.2");
         assert_eq!(express.purl, Some("pkg:npm/express@^4.18.2".to_string()));
@@ -376,15 +376,15 @@ tokio = { version = "1.30", features = ["full"] }
     #[test]
     fn test_generate_sbom_formats() {
         let generator = DefaultSbomGenerator;
-        let deps = vec![
-            Dependency {
-                name: "anyhow".to_string(),
-                version: "1.0".to_string(),
-                purl: Some("pkg:cargo/anyhow@1.0".to_string()),
-            }
-        ];
+        let deps = vec![Dependency {
+            name: "anyhow".to_string(),
+            version: "1.0".to_string(),
+            purl: Some("pkg:cargo/anyhow@1.0".to_string()),
+        }];
 
-        let cyclonedx_str = generator.generate_sbom(&deps, SbomFormat::CycloneDX).unwrap();
+        let cyclonedx_str = generator
+            .generate_sbom(&deps, SbomFormat::CycloneDX)
+            .unwrap();
         let cyclonedx_json: serde_json::Value = serde_json::from_str(&cyclonedx_str).unwrap();
         assert_eq!(cyclonedx_json["bomFormat"], "CycloneDX");
         assert_eq!(cyclonedx_json["components"][0]["name"], "anyhow");

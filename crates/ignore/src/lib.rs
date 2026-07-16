@@ -3,9 +3,9 @@
 //! Exposes the `IgnoreMatcher` which implements `PathMatcher` using standard
 //! gitignore behavior and glob patterns.
 
-use std::path::{Path, PathBuf};
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use packwiser_core::PathMatcher;
+use std::path::{Path, PathBuf};
 
 /// A path matcher utilizing standard gitignore format and rules.
 #[derive(Debug)]
@@ -106,7 +106,7 @@ mod tests {
     fn test_gitignore_file_loading() {
         let temp_dir = tempfile::tempdir().unwrap();
         let gitignore_path = temp_dir.path().join(".gitignore");
-        
+
         let mut file = File::create(&gitignore_path).unwrap();
         writeln!(file, "*.txt").unwrap();
         writeln!(file, "!keep.txt").unwrap();

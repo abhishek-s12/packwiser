@@ -3,11 +3,11 @@
 //! Scans workspaces recursively (filtering nested folders) to detect 20+ languages
 //! and frameworks, returning recommended exclusions to prevent archiving dependencies and cache files.
 
+use packwiser_core::{DetectionError, DetectionResult, ProjectDetector, ProjectStack};
+use serde::Deserialize;
 use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
-use serde::Deserialize;
-use packwiser_core::{ProjectStack, DetectionResult, ProjectDetector, DetectionError};
 
 /// Default implementation of the `ProjectDetector` trait.
 #[derive(Debug, Clone, Copy, Default)]
@@ -72,7 +72,7 @@ impl ProjectDetector for HeuristicProjectDetector {
                         continue;
                     }
                     paths_to_check.push((path.clone(), depth + 1));
-                    
+
                     // Unity directory match check
                     if name_str == "Assets" && dir.join("ProjectSettings").exists() {
                         stacks.insert(ProjectStack::Unity);
@@ -104,12 +104,13 @@ impl ProjectDetector for HeuristicProjectDetector {
                     recommended_ignores.insert("/node_modules".to_string());
                     recommended_ignores.insert("/dist".to_string());
                     manifest_counts += 1;
-                    
+
                     // Parse package dependencies for web frameworks
-                    if let Ok(content) = fs::read_to_string(&path) {
-                        if let Ok(pkg) = serde_json::from_str::<DummyPackageJson>(&content) {
+                    if let Ok(content) = fs::read_to_string(&path)
+                        && let Ok(pkg) = serde_json::from_str::<DummyPackageJson>(&content) {
                             let has_dep = |name: &str| {
-                                pkg.dependencies.contains_key(name) || pkg.dev_dependencies.contains_key(name)
+                                pkg.dependencies.contains_key(name)
+                                    || pkg.dev_dependencies.contains_key(name)
                             };
                             if has_dep("next") {
                                 stacks.insert(ProjectStack::NextJs);
@@ -130,7 +131,6 @@ impl ProjectDetector for HeuristicProjectDetector {
                                 recommended_ignores.insert("/.cache".to_string());
                             }
                         }
-                    }
                 } else if name_str == "requirements.txt"
                     || name_str == "pyproject.toml"
                     || name_str == "poetry.lock"
@@ -153,37 +153,48 @@ impl ProjectDetector for HeuristicProjectDetector {
                             stacks.insert(ProjectStack::FastApi);
                         }
                     }
-                } else if name_str == "pom.xml" || name_str == "build.gradle" || name_str == "build.gradle.kts" {
+                } else if name_str == "pom.xml"
+                    || name_str == "build.gradle"
+                    || name_str == "build.gradle.kts"
+                {
                     stacks.insert(ProjectStack::Java);
                     recommended_ignores.insert("/build".to_string());
                     recommended_ignores.insert("/.gradle".to_string());
                     recommended_ignores.insert("**/target".to_string());
                     manifest_counts += 1;
 
-                    if name_str.ends_with(".gradle.kts") || (name_str == "build.gradle" && path.extension().map_or(false, |ext| ext == "gradle")) {
+                    if name_str.ends_with(".gradle.kts")
+                        || (name_str == "build.gradle"
+                            && path.extension().is_some_and(|ext| ext == "gradle"))
+                    {
                         stacks.insert(ProjectStack::Kotlin);
                     }
 
-                    if let Ok(content) = fs::read_to_string(&path) {
-                        if content.contains("spring-boot") {
+                    if let Ok(content) = fs::read_to_string(&path)
+                        && content.contains("spring-boot") {
                             stacks.insert(ProjectStack::SpringBoot);
                         }
-                    }
-                } else if path.extension().map_or(false, |ext| ext == "csproj" || ext == "sln") {
+                } else if path
+                    .extension()
+                    .is_some_and(|ext| ext == "csproj" || ext == "sln")
+                {
                     stacks.insert(ProjectStack::DotNet);
                     recommended_ignores.insert("/bin".to_string());
                     recommended_ignores.insert("/obj".to_string());
                     manifest_counts += 1;
                 } else if name_str == "pubspec.yaml" {
-                    if let Ok(content) = fs::read_to_string(&path) {
-                        if content.contains("flutter:") {
+                    if let Ok(content) = fs::read_to_string(&path)
+                        && content.contains("flutter:") {
                             stacks.insert(ProjectStack::Flutter);
                             recommended_ignores.insert("/.dart_tool".to_string());
                             recommended_ignores.insert("/build".to_string());
                             manifest_counts += 1;
                         }
-                    }
-                } else if name_str == "Package.swift" || path.extension().map_or(false, |ext| ext == "xcodeproj" || ext == "xcworkspace") {
+                } else if name_str == "Package.swift"
+                    || path
+                        .extension()
+                        .is_some_and(|ext| ext == "xcodeproj" || ext == "xcworkspace")
+                {
                     stacks.insert(ProjectStack::Swift);
                     stacks.insert(ProjectStack::Ios);
                     recommended_ignores.insert("/build".to_string());
@@ -192,7 +203,7 @@ impl ProjectDetector for HeuristicProjectDetector {
                     stacks.insert(ProjectStack::Android);
                     recommended_ignores.insert("/build".to_string());
                     manifest_counts += 1;
-                } else if path.extension().map_or(false, |ext| ext == "uproject") {
+                } else if path.extension().is_some_and(|ext| ext == "uproject") {
                     stacks.insert(ProjectStack::Unreal);
                     recommended_ignores.insert("/Binaries".to_string());
                     recommended_ignores.insert("/Build".to_string());
@@ -261,20 +272,32 @@ mod tests {
         assert!(result.stacks.contains(&ProjectStack::React));
         assert!(result.stacks.contains(&ProjectStack::NextJs));
         assert!(result.recommended_ignores.contains(&"/.next".to_string()));
-        assert!(result.recommended_ignores.contains(&"/node_modules".to_string()));
+        assert!(
+            result
+                .recommended_ignores
+                .contains(&"/node_modules".to_string())
+        );
     }
 
     #[test]
     fn test_detect_python_fastapi() {
         let temp_dir = tempdir().unwrap();
-        fs::write(temp_dir.path().join("requirements.txt"), "fastapi==0.100.0\nuvicorn").unwrap();
+        fs::write(
+            temp_dir.path().join("requirements.txt"),
+            "fastapi==0.100.0\nuvicorn",
+        )
+        .unwrap();
 
         let detector = HeuristicProjectDetector::new();
         let result = detector.detect(temp_dir.path()).unwrap();
 
         assert!(result.stacks.contains(&ProjectStack::Python));
         assert!(result.stacks.contains(&ProjectStack::FastApi));
-        assert!(result.recommended_ignores.contains(&"**/__pycache__".to_string()));
+        assert!(
+            result
+                .recommended_ignores
+                .contains(&"**/__pycache__".to_string())
+        );
     }
 
     #[test]

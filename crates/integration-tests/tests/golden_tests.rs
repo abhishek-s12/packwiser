@@ -58,13 +58,13 @@ fn test_manifest_golden_regression() {
 
     let expected = fs::read_to_string(&golden_file).unwrap();
     
-    // Normalize newlines to prevent cross-platform OS failures
-    let normalized_serialized = serialized.replace("\r\n", "\n");
-    let normalized_expected = expected.replace("\r\n", "\n");
+    // Parse to serde_json::Value to compare semantically, bypassing Map ordering non-determinism
+    let serialized_val: serde_json::Value = serde_json::from_str(&serialized).unwrap();
+    let expected_val: serde_json::Value = serde_json::from_str(&expected).unwrap();
 
     assert_eq!(
-        normalized_serialized, 
-        normalized_expected, 
-        "Golden file mismatch! Run with UPDATE_GOLDEN=1 environment variable to update."
+        serialized_val, 
+        expected_val, 
+        "Golden JSON mismatch! Run with UPDATE_GOLDEN=1 environment variable to update."
     );
 }

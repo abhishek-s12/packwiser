@@ -2,27 +2,23 @@
 //!
 //! Parses command line args and executes high-level packaging and scanning workflows.
 
+use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
+use packwiser_compressor::{
+    TarCompressor, TarGzCompressor, TarXzCompressor, TarZstCompressor, ZipCompressor,
+};
+use packwiser_core::{
+    FileEntry, Hasher, PathMatcher, PipelineOptions, PolicyEnforcer, QualityEvaluator,
+    SecretScanner, Signer,
+};
+use packwiser_ignore::IgnoreMatcher;
+use packwiser_scanner::CredentialScanner;
+use packwiser_signature::{self, Ed25519Signer};
+use packwiser_uploader::UniversalUploader;
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use anyhow::{Context, Result};
-use packwiser_core::{
-    FileEntry, Hasher, PathMatcher, PipelineOptions, PolicyEnforcer,
-    QualityEvaluator, SecretScanner, Signer,
-};
-use packwiser_ignore::IgnoreMatcher;
-use packwiser_scanner::CredentialScanner;
-use packwiser_compressor::{
-    ZipCompressor, TarCompressor, TarGzCompressor, TarXzCompressor, TarZstCompressor
-};
-use packwiser_checksum;
-use packwiser_manifest;
-use packwiser_quality;
-use packwiser_policy;
-use packwiser_signature::{self, Ed25519Signer};
-use packwiser_uploader::UniversalUploader;
 
 #[derive(Parser)]
 #[command(
@@ -107,8 +103,11 @@ enum Commands {
 
 struct HasherWrapper;
 impl Hasher for HasherWrapper {
-    fn calculate(&self, mut reader: &mut dyn Read) -> Result<HashMap<String, String>, std::io::Error> {
-        let res = packwiser_checksum::calculate_checksums(&mut reader)?;
+    fn calculate(
+        &self,
+        reader: &mut dyn Read,
+    ) -> Result<HashMap<String, String>, std::io::Error> {
+        let res = packwiser_checksum::calculate_checksums(reader)?;
         let mut map = HashMap::new();
         map.insert("sha256".to_string(), res.sha256);
         map.insert("sha512".to_string(), res.sha512);
@@ -143,10 +142,14 @@ fn main() -> Result<()> {
     let args = Cli::parse();
 
     match args.command {
-        Commands::Package { path, key_file, upload } => {
+        Commands::Package {
+            path,
+            key_file,
+            upload,
+        } => {
             let canonical_root = fs::canonicalize(&path)
                 .with_context(|| format!("Failed to canonicalize target path: {:?}", path))?;
-            
+
             if !args.quiet && !args.json {
                 println!("Evaluating workspace at: {:?}", canonical_root);
             }
@@ -155,15 +158,22 @@ fn main() -> Result<()> {
             let matcher = IgnoreMatcher::new(&canonical_root, &[]);
             let mut files = Vec::new();
             let mut excluded_files = Vec::new();
-            collect_workspace_entries(&canonical_root, &canonical_root, &matcher, &mut files, &mut excluded_files)?;
+            collect_workspace_entries(
+                &canonical_root,
+                &canonical_root,
+                &matcher,
+                &mut files,
+                &mut excluded_files,
+            )?;
 
             // 2. Identify the language heuristics
             let language = detect_primary_language(&files);
 
             // 3. Determine output archive format and path
-            let output_archive = args.output.clone().unwrap_or_else(|| {
-                PathBuf::from("packwiser_archive.zip")
-            });
+            let output_archive = args
+                .output
+                .clone()
+                .unwrap_or_else(|| PathBuf::from("packwiser_archive.zip"));
 
             // 4. Instantiating compressor based on file extension
             let ext = output_archive
@@ -171,7 +181,7 @@ fn main() -> Result<()> {
                 .unwrap_or("")
                 .split('.')
                 .collect::<Vec<&str>>();
-            
+
             let is_tar_gz = ext.contains(&"tar") && ext.contains(&"gz");
             let is_tar_xz = ext.contains(&"tar") && ext.contains(&"xz");
             let is_tar_zst = ext.contains(&"tar") && ext.contains(&"zst");
@@ -234,7 +244,8 @@ fn main() -> Result<()> {
                 language,
             };
 
-            let res = pipeline.run(&canonical_root, &files, &excluded_files, pipeline_opts)
+            let res = pipeline
+                .run(&canonical_root, &files, &excluded_files, pipeline_opts)
                 .context("Pipeline execution failed")?;
 
             // 8. Populate git metadata programmatically and save manifest.json
@@ -257,14 +268,23 @@ fn main() -> Result<()> {
                 println!("{}", serde_json::to_string_pretty(&output)?);
             } else if !args.quiet {
                 println!("Packaging completed successfully!");
-                println!("  Archive:          {:?} ({} bytes)", output_archive, res.archive_size);
+                println!(
+                    "  Archive:          {:?} ({} bytes)",
+                    output_archive, res.archive_size
+                );
                 println!("  Manifest:         {:?}", manifest_path);
                 println!("  Quality Score:    {}/100", final_manifest.score);
                 if final_manifest.git_commit.is_some() {
                     println!(
                         "  Reproducibility:  Git commit {} on branch {}",
-                        final_manifest.git_commit.as_ref().unwrap_or(&"".to_string()),
-                        final_manifest.git_branch.as_ref().unwrap_or(&"".to_string())
+                        final_manifest
+                            .git_commit
+                            .as_ref()
+                            .unwrap_or(&"".to_string()),
+                        final_manifest
+                            .git_branch
+                            .as_ref()
+                            .unwrap_or(&"".to_string())
                     );
                 }
                 if res.signature.is_some() {
@@ -277,7 +297,10 @@ fn main() -> Result<()> {
                 .with_context(|| format!("Failed to canonicalize target path: {:?}", path))?;
 
             if !args.quiet && !args.json {
-                println!("Starting credentials and secret detection scan on {:?}", path);
+                println!(
+                    "Starting credentials and secret detection scan on {:?}",
+                    path
+                );
             }
 
             let matcher = IgnoreMatcher::new(&path, &[]);
@@ -301,7 +324,11 @@ fn main() -> Result<()> {
                 println!("{}", serde_json::to_string_pretty(&output)?);
             } else if !args.quiet {
                 println!("Scan completed successfully.");
-                println!("Scanned {} files. Found {} potential leaks.", files.len(), leaks.len());
+                println!(
+                    "Scanned {} files. Found {} potential leaks.",
+                    files.len(),
+                    leaks.len()
+                );
                 for leak in &leaks {
                     println!(
                         "  - [{:?}] File: {:?} (Line: {}) | Rule: {} | Masked: {}",
@@ -314,7 +341,10 @@ fn main() -> Result<()> {
                 }
             }
         }
-        Commands::Verify { archive_path, key_file } => {
+        Commands::Verify {
+            archive_path,
+            key_file,
+        } => {
             if !args.quiet {
                 println!("Verifying digital signature of: {:?}", archive_path);
             }
@@ -328,7 +358,10 @@ fn main() -> Result<()> {
             // Read signature bytes
             let sig_path = archive_path.with_extension(format!(
                 "{}.sig",
-                archive_path.extension().and_then(|e| e.to_str()).unwrap_or("")
+                archive_path
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .unwrap_or("")
             ));
             let mut sig_file = File::open(&sig_path)
                 .with_context(|| format!("Failed to open signature file: {:?}", sig_path))?;
@@ -342,15 +375,20 @@ fn main() -> Result<()> {
             pub_key_file.read_to_end(&mut pub_key_bytes)?;
 
             let signer = Ed25519Signer;
-            let verified = signer.verify(&archive_bytes, &sig_bytes, &pub_key_bytes)
+            let verified = signer
+                .verify(&archive_bytes, &sig_bytes, &pub_key_bytes)
                 .context("Verification execution failed")?;
 
             if verified {
                 if !args.quiet {
-                    println!("Signature matches public key! Package integrity and authenticity VERIFIED.");
+                    println!(
+                        "Signature matches public key! Package integrity and authenticity VERIFIED."
+                    );
                 }
             } else {
-                return Err(anyhow::anyhow!("Authenticity check failed: digital signature does not match public key"));
+                return Err(anyhow::anyhow!(
+                    "Authenticity check failed: digital signature does not match public key"
+                ));
             }
         }
     }
@@ -373,7 +411,9 @@ fn collect_workspace_entries(
     }
 
     if current.is_dir() {
-        for entry in fs::read_dir(current).with_context(|| format!("Failed to read directory {:?}", current))? {
+        for entry in fs::read_dir(current)
+            .with_context(|| format!("Failed to read directory {:?}", current))?
+        {
             let entry = entry?;
             let path = entry.path();
             if matcher.is_ignored(&path) {
@@ -384,9 +424,13 @@ fn collect_workspace_entries(
             } else {
                 let size = path.metadata()?.len();
                 let is_symlink = path.is_symlink();
-                let file_type = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_string();
+                let file_type = path
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .unwrap_or("")
+                    .to_string();
                 let relative_path = path.strip_prefix(root).unwrap_or(&path).to_path_buf();
-                
+
                 files.push(FileEntry {
                     relative_path,
                     absolute_path: path,
@@ -399,7 +443,11 @@ fn collect_workspace_entries(
     } else {
         let size = current.metadata()?.len();
         let is_symlink = current.is_symlink();
-        let file_type = current.extension().and_then(|e| e.to_str()).unwrap_or("").to_string();
+        let file_type = current
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_string();
         let relative_path = current.strip_prefix(root).unwrap_or(current).to_path_buf();
 
         files.push(FileEntry {

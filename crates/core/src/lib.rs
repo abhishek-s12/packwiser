@@ -3,11 +3,11 @@
 //! Exposes key traits, structures, and unified error types
 //! that define the PackWiser domain model and drive clean dependencies.
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use serde::{Deserialize, Serialize};
 
 /// Represents the classification of a software project.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -482,7 +482,7 @@ pub enum SbomError {
     /// Read error loading manifest file from workspace
     #[error("Failed to read dependency descriptor: {0}")]
     Read(String),
-    
+
     /// Parse error deserializing manifest files (json/toml)
     #[error("Failed to parse dependency contents: {0}")]
     Parse(String),
@@ -517,7 +517,11 @@ pub trait SbomGenerator {
     /// Scans the workspace directory to detect package manifest dependencies.
     fn detect_dependencies(&self, workspace_root: &Path) -> Result<Vec<Dependency>, SbomError>;
     /// Serializes extracted dependency information into requested format text.
-    fn generate_sbom(&self, dependencies: &[Dependency], format: SbomFormat) -> Result<String, SbomError>;
+    fn generate_sbom(
+        &self,
+        dependencies: &[Dependency],
+        format: SbomFormat,
+    ) -> Result<String, SbomError>;
 }
 
 /// Trait defining the engine interface to evaluate file ignore exclusions.
@@ -561,7 +565,12 @@ pub trait Signer {
     /// Calculates signature over bytes using private key.
     fn sign(&self, data: &[u8], private_key: &[u8]) -> Result<Vec<u8>, SignatureError>;
     /// Verifies digital signature over bytes using public key.
-    fn verify(&self, data: &[u8], signature: &[u8], public_key: &[u8]) -> Result<bool, SignatureError>;
+    fn verify(
+        &self,
+        data: &[u8],
+        signature: &[u8],
+        public_key: &[u8],
+    ) -> Result<bool, SignatureError>;
 }
 
 /// Trait defining remote target upload operations.
@@ -686,28 +695,31 @@ where
         }
 
         // 2. Perform compression into output archive path
-        let output_file = File::create(&opts.output_archive)
-            .map_err(|e| CompressionError::Io(e))?;
+        let output_file =
+            File::create(&opts.output_archive).map_err(CompressionError::Io)?;
         let mut writer = std::io::BufWriter::new(output_file);
-        
-        let _ = self.compressor.compress(
-            files,
-            &mut writer,
-            Box::new(|_| {}),
-        )?;
-        writer.flush().map_err(|e| CompressionError::Io(e))?;
+
+        let _ = self
+            .compressor
+            .compress(files, &mut writer, Box::new(|_| {}))?;
+        writer.flush().map_err(CompressionError::Io)?;
 
         // 3. Compute checksums of the output file
-        let mut check_file = File::open(&opts.output_archive)
-            .map_err(|e| CompressionError::Io(std::io::Error::new(
+        let mut check_file = File::open(&opts.output_archive).map_err(|e| {
+            CompressionError::Io(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
-                format!("Failed to reopen archive: {:?}", e)
-            )))?;
-        let checksums = self.hasher.calculate(&mut check_file)
-            .map_err(|e| CompressionError::Io(e))?;
+                format!("Failed to reopen archive: {:?}", e),
+            ))
+        })?;
+        let checksums = self
+            .hasher
+            .calculate(&mut check_file)
+            .map_err(CompressionError::Io)?;
 
-        let archive_size = opts.output_archive.metadata()
-            .map_err(|e| CompressionError::Io(e))?
+        let archive_size = opts
+            .output_archive
+            .metadata()
+            .map_err(CompressionError::Io)?
             .len();
 
         // 4. Generate draft manifest
@@ -737,7 +749,7 @@ where
 
         // 6. Check signature requirements
         let is_signed = opts.private_key.is_some();
-        
+
         // 7. Enforce policy check rules
         if let Err(violations) = self.policy.enforce(&manifest, archive_size, is_signed) {
             // Delete output archive to prevent releasing uncompliant builds
@@ -748,22 +760,28 @@ where
         // 8. Sign the archive if private key is supplied
         let signature = if let Some(ref key) = opts.private_key {
             // Read archive bytes to sign
-            let mut archive_file = File::open(&opts.output_archive)
-                .map_err(|e| CompressionError::Io(e))?;
+            let mut archive_file =
+                File::open(&opts.output_archive).map_err(CompressionError::Io)?;
             let mut archive_bytes = Vec::new();
-            archive_file.read_to_end(&mut archive_bytes)
-                .map_err(|e| CompressionError::Io(e))?;
+            archive_file
+                .read_to_end(&mut archive_bytes)
+                .map_err(CompressionError::Io)?;
 
             let sig = self.signer.sign(&archive_bytes, key)?;
-            
+
             // Save signature file
             let sig_path = opts.output_archive.with_extension(format!(
                 "{}.sig",
-                opts.output_archive.extension().and_then(|e| e.to_str()).unwrap_or("")
+                opts.output_archive
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .unwrap_or("")
             ));
-            let mut sig_file = File::create(sig_path).map_err(|e| CompressionError::Io(e))?;
-            sig_file.write_all(&sig).map_err(|e| CompressionError::Io(e))?;
-            sig_file.flush().map_err(|e| CompressionError::Io(e))?;
+            let mut sig_file = File::create(sig_path).map_err(CompressionError::Io)?;
+            sig_file
+                .write_all(&sig)
+                .map_err(CompressionError::Io)?;
+            sig_file.flush().map_err(CompressionError::Io)?;
 
             Some(sig)
         } else {
@@ -782,4 +800,3 @@ where
         })
     }
 }
-

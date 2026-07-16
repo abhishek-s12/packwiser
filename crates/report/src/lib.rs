@@ -3,7 +3,7 @@
 //! Generates Markdown summaries, styled static HTML dashboards, and standard-compliant
 //! SARIF files for code security analysis integrations.
 
-use packwiser_core::{ReportInput, ReportGenerator, ReportError};
+use packwiser_core::{ReportError, ReportGenerator, ReportInput};
 
 /// Default implementation of the `ReportGenerator` trait.
 #[derive(Debug, Clone, Copy, Default)]
@@ -19,26 +19,46 @@ impl DefaultReportGenerator {
 impl ReportGenerator for DefaultReportGenerator {
     fn generate_markdown(&self, input: &ReportInput) -> Result<String, ReportError> {
         let mut md = String::new();
-        md.push_str(&format!("# PackWiser Security & Build Report - {}\n\n", input.project_name));
+        md.push_str(&format!(
+            "# PackWiser Security & Build Report - {}\n\n",
+            input.project_name
+        ));
         md.push_str(&format!("* **Version**: {}\n", input.version));
-        md.push_str(&format!("* **Package Quality Score**: **{}/100**\n\n", input.quality_score));
+        md.push_str(&format!(
+            "* **Package Quality Score**: **{}/100**\n\n",
+            input.quality_score
+        ));
 
         md.push_str("## Package Statistics\n\n");
         md.push_str("| Metric | Value |\n");
         md.push_str("| --- | --- |\n");
-        md.push_str(&format!("| Scanned Files | {} |\n", input.total_files_scanned));
-        md.push_str(&format!("| Excluded Files | {} |\n", input.total_files_ignored));
-        md.push_str(&format!("| Compressed Size | {} bytes |\n", input.archive_size_bytes));
-        md.push_str(&format!("| Compression Ratio | {:.2}x |\n\n", input.compression_ratio));
+        md.push_str(&format!(
+            "| Scanned Files | {} |\n",
+            input.total_files_scanned
+        ));
+        md.push_str(&format!(
+            "| Excluded Files | {} |\n",
+            input.total_files_ignored
+        ));
+        md.push_str(&format!(
+            "| Compressed Size | {} bytes |\n",
+            input.archive_size_bytes
+        ));
+        md.push_str(&format!(
+            "| Compression Ratio | {:.2}x |\n\n",
+            input.compression_ratio
+        ));
 
         if !input.secrets_detected.is_empty() {
             md.push_str("## ⚠️ Detected Credentials & Secrets\n\n");
             md.push_str("> [!CAUTION]\n");
-            md.push_str("> The following potential secrets were identified and excluded/masked:\n\n");
+            md.push_str(
+                "> The following potential secrets were identified and excluded/masked:\n\n",
+            );
             for secret in &input.secrets_detected {
                 md.push_str(&format!("* `{}`\n", secret));
             }
-            md.push_str("\n");
+            md.push('\n');
         }
 
         if !input.warnings.is_empty() {
@@ -46,7 +66,7 @@ impl ReportGenerator for DefaultReportGenerator {
             for warning in &input.warnings {
                 md.push_str(&format!("* ⚠️ {}\n", warning));
             }
-            md.push_str("\n");
+            md.push('\n');
         }
 
         if !input.recommendations.is_empty() {
@@ -54,7 +74,7 @@ impl ReportGenerator for DefaultReportGenerator {
             for rec in &input.recommendations {
                 md.push_str(&format!("* 💡 {}\n", rec));
             }
-            md.push_str("\n");
+            md.push('\n');
         }
 
         Ok(md)
@@ -64,12 +84,19 @@ impl ReportGenerator for DefaultReportGenerator {
         let mut html = String::new();
         html.push_str("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n");
         html.push_str("  <meta charset=\"UTF-8\">\n");
-        html.push_str("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n");
-        html.push_str(&format!("  <title>PackWiser Report - {}</title>\n", input.project_name));
+        html.push_str(
+            "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n",
+        );
+        html.push_str(&format!(
+            "  <title>PackWiser Report - {}</title>\n",
+            input.project_name
+        ));
         html.push_str("  <style>\n");
         html.push_str("    body { font-family: 'Inter', system-ui, sans-serif; background-color: #0f172a; color: #f8fafc; padding: 2rem; margin: 0; }\n");
         html.push_str("    .container { max-width: 900px; margin: 0 auto; background: #1e293b; border-radius: 12px; padding: 2.5rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); border: 1px solid #334155; }\n");
-        html.push_str("    h1 { margin-top: 0; color: #38bdf8; font-size: 2.25rem; font-weight: 800; }\n");
+        html.push_str(
+            "    h1 { margin-top: 0; color: #38bdf8; font-size: 2.25rem; font-weight: 800; }\n",
+        );
         html.push_str("    .meta { font-size: 0.875rem; color: #94a3b8; border-bottom: 1px solid #334155; padding-bottom: 1rem; margin-bottom: 2rem; }\n");
         html.push_str("    .score-badge { display: inline-block; padding: 0.5rem 1rem; border-radius: 9999px; font-weight: bold; background: #059669; color: #fff; }\n");
         html.push_str("    .score-low { background: #dc2626; }\n");
@@ -85,10 +112,20 @@ impl ReportGenerator for DefaultReportGenerator {
         html.push_str("  <div class=\"container\">\n");
         html.push_str(&format!("    <h1>{}</h1>\n", input.project_name));
         html.push_str("    <div class=\"meta\">\n");
-        html.push_str(&format!("      <span>Version: {}</span> | \n", input.version));
-        
-        let low_class = if input.quality_score < 80 { " score-low" } else { "" };
-        html.push_str(&format!("      <span>Quality Score: <span class=\"score-badge{}\">{}/100</span></span>\n", low_class, input.quality_score));
+        html.push_str(&format!(
+            "      <span>Version: {}</span> | \n",
+            input.version
+        ));
+
+        let low_class = if input.quality_score < 80 {
+            " score-low"
+        } else {
+            ""
+        };
+        html.push_str(&format!(
+            "      <span>Quality Score: <span class=\"score-badge{}\">{}/100</span></span>\n",
+            low_class, input.quality_score
+        ));
         html.push_str("    </div>\n\n");
 
         html.push_str("    <div class=\"grid\">\n");
@@ -102,7 +139,10 @@ impl ReportGenerator for DefaultReportGenerator {
             html.push_str("    <div class=\"section-title\">⚠️ Potential Secrets Flagged</div>\n");
             html.push_str("    <ul style=\"padding: 0;\">\n");
             for secret in &input.secrets_detected {
-                html.push_str(&format!("      <li class=\"secret-item\">{}</li>\n", secret));
+                html.push_str(&format!(
+                    "      <li class=\"secret-item\">{}</li>\n",
+                    secret
+                ));
             }
             html.push_str("    </ul>\n");
         }
@@ -133,7 +173,10 @@ impl ReportGenerator for DefaultReportGenerator {
         let mut results = Vec::new();
 
         for (idx, secret) in input.secrets_detected.iter().enumerate() {
-            let msg = format!("Credential leak warning: detected potential secret string '{}'", secret);
+            let msg = format!(
+                "Credential leak warning: detected potential secret string '{}'",
+                secret
+            );
             let result_json = serde_json::json!({
                 "ruleId": "PW001",
                 "ruleIndex": 0,

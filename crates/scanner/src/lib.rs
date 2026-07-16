@@ -3,11 +3,11 @@
 //! Implements regex-based signature matching and Shannon entropy checks to
 //! find credentials, keys, and tokens in files without exposing their raw values.
 
+use packwiser_core::{ScanError, SecretLeak, SecretScanner, Severity};
+use regex::Regex;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
-use regex::Regex;
-use packwiser_core::{ScanError, SecretLeak, SecretScanner, Severity};
 
 /// Defines a rule for regex-based secret detection.
 #[derive(Debug, Clone)]
@@ -42,7 +42,8 @@ impl CredentialScanner {
         let rules = vec![
             ScannerRule {
                 name: "aws_access_key".to_string(),
-                pattern: Regex::new(r"\b(AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}\b").unwrap(),
+                pattern: Regex::new(r"\b(AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}\b")
+                    .unwrap(),
                 severity: Severity::Critical,
                 description: "AWS Access Key ID detected".to_string(),
             },
@@ -72,7 +73,8 @@ impl CredentialScanner {
             },
             ScannerRule {
                 name: "openai_key".to_string(),
-                pattern: Regex::new(r"\bsk-[a-zA-Z0-9]{48}\b|\bsk-proj-[a-zA-Z0-9_-]{48,}\b").unwrap(),
+                pattern: Regex::new(r"\bsk-[a-zA-Z0-9]{48}\b|\bsk-proj-[a-zA-Z0-9_-]{48,}\b")
+                    .unwrap(),
                 severity: Severity::Critical,
                 description: "OpenAI Secret Key detected".to_string(),
             },
@@ -140,7 +142,13 @@ impl CredentialScanner {
     }
 
     /// Check text segments for high entropy strings that might be password hashes or tokens.
-    fn check_high_entropy(&self, line: &str, line_num: usize, file_path: &Path, leaks: &mut Vec<SecretLeak>) {
+    fn check_high_entropy(
+        &self,
+        line: &str,
+        line_num: usize,
+        file_path: &Path,
+        leaks: &mut Vec<SecretLeak>,
+    ) {
         // Splitting tokens using typical assignment delimiters
         let delimiters = [' ', '\t', '=', ':', '"', '\'', ',', ';', '(', ')', '[', ']'];
         for token in line.split(&delimiters[..]) {
@@ -234,7 +242,10 @@ mod tests {
         let long = "AKIA1234567890123456";
 
         assert_eq!(CredentialScanner::mask_secret(short), "****");
-        assert_eq!(CredentialScanner::mask_secret(long), "AKIA...[masked]...3456");
+        assert_eq!(
+            CredentialScanner::mask_secret(long),
+            "AKIA...[masked]...3456"
+        );
     }
 
     #[test]
@@ -244,7 +255,11 @@ mod tests {
 
         let mut file = File::create(&file_path).unwrap();
         writeln!(file, "AWS_KEY=AKIAFOOBARBAZ1234567").unwrap();
-        writeln!(file, "GITHUB_TOKEN=ghp_abcdefghijklmnopqrstuvwxyz0123456789").unwrap();
+        writeln!(
+            file,
+            "GITHUB_TOKEN=ghp_abcdefghijklmnopqrstuvwxyz0123456789"
+        )
+        .unwrap();
         writeln!(file, "SOME_VALUE=regular_text").unwrap();
         file.flush().unwrap();
 

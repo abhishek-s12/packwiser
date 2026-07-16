@@ -3,13 +3,12 @@
 //! Exposes helper functions to generate `manifest.json`, load/save manifests,
 //! and extract repository metadata (VCS/Git info) programmatically.
 
+use chrono::Utc;
+use packwiser_core::{PackageManifest, SecretLeak};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use chrono::Utc;
-use serde_json;
-use packwiser_core::{PackageManifest, SecretLeak};
 
 /// Programmatically extracts the git commit hash and active branch name.
 ///
@@ -29,7 +28,7 @@ pub fn resolve_git_metadata(workspace_root: &Path) -> (Option<String>, Option<St
 
     if head_content.starts_with("ref: ") {
         let ref_path = head_content.strip_prefix("ref: ").unwrap_or("").trim();
-        let branch_name = ref_path.split('/').last().map(|s| s.to_string());
+        let branch_name = ref_path.split('/').next_back().map(|s| s.to_string());
 
         let ref_file_path = git_dir.join(ref_path);
         let commit_hash = match std::fs::read_to_string(&ref_file_path) {

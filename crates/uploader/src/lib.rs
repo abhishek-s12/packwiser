@@ -3,11 +3,10 @@
 //! Provides URI routing and REST API client adapters to upload final packages to
 //! AWS S3, Google Cloud Storage, Azure Blob Storage, and GitHub Releases.
 
+use packwiser_core::{UploadError, Uploader};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use ureq;
-use packwiser_core::{Uploader, UploadError};
 
 /// Parsed metadata representing a targeted upload destination.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -19,7 +18,11 @@ pub enum UploadDestination {
     /// Azure Blob storage with container and blob name
     Azure { container: String, blob: String },
     /// GitHub Release target with repository details and release tag
-    GitHub { owner: String, repo: String, tag: String },
+    GitHub {
+        owner: String,
+        repo: String,
+        tag: String,
+    },
 }
 
 impl UploadDestination {
@@ -60,7 +63,10 @@ impl UploadDestination {
                     tag: parts[1..].join("/"),
                 })
             }
-            _ => Err(UploadError::Network(format!("Unsupported upload scheme: {}", scheme))),
+            _ => Err(UploadError::Network(format!(
+                "Unsupported upload scheme: {}",
+                scheme
+            ))),
         }
     }
 }
@@ -87,10 +93,14 @@ impl UniversalUploader {
         }
 
         let access_key = std::env::var("AWS_ACCESS_KEY_ID").map_err(|_| {
-            UploadError::Authentication("AWS_ACCESS_KEY_ID environment variable is missing".to_string())
+            UploadError::Authentication(
+                "AWS_ACCESS_KEY_ID environment variable is missing".to_string(),
+            )
         })?;
         let secret_key = std::env::var("AWS_SECRET_ACCESS_KEY").map_err(|_| {
-            UploadError::Authentication("AWS_SECRET_ACCESS_KEY environment variable is missing".to_string())
+            UploadError::Authentication(
+                "AWS_SECRET_ACCESS_KEY environment variable is missing".to_string(),
+            )
         })?;
 
         let mut file = File::open(local_path)
@@ -101,7 +111,10 @@ impl UniversalUploader {
 
         // Perform HTTP PUT to upload the raw binary payload
         let response = ureq::put(&url)
-            .set("Authorization", &format!("Bearer {}:{}", access_key, secret_key))
+            .set(
+                "Authorization",
+                &format!("Bearer {}:{}", access_key, secret_key),
+            )
             .set("Content-Type", "application/octet-stream")
             .send_bytes(&buffer);
 
@@ -112,14 +125,19 @@ impl UniversalUploader {
     }
 
     fn upload_to_gcs(&self, local_path: &Path, bucket: &str, key: &str) -> Result<(), UploadError> {
-        let url = format!("https://storage.googleapis.com/upload/storage/v1/b/{}/o?uploadType=media&name={}", bucket, key);
+        let url = format!(
+            "https://storage.googleapis.com/upload/storage/v1/b/{}/o?uploadType=media&name={}",
+            bucket, key
+        );
 
         if self.dry_run {
             return Ok(());
         }
 
         let token = std::env::var("GCS_OAUTH_TOKEN").map_err(|_| {
-            UploadError::Authentication("GCS_OAUTH_TOKEN authorization credential is missing".to_string())
+            UploadError::Authentication(
+                "GCS_OAUTH_TOKEN authorization credential is missing".to_string(),
+            )
         })?;
 
         let mut file = File::open(local_path)
@@ -139,7 +157,12 @@ impl UniversalUploader {
         }
     }
 
-    fn upload_to_azure(&self, local_path: &Path, container: &str, blob: &str) -> Result<(), UploadError> {
+    fn upload_to_azure(
+        &self,
+        local_path: &Path,
+        container: &str,
+        blob: &str,
+    ) -> Result<(), UploadError> {
         if self.dry_run {
             return Ok(());
         }
@@ -147,10 +170,15 @@ impl UniversalUploader {
         let account = std::env::var("AZURE_STORAGE_ACCOUNT").map_err(|_| {
             UploadError::Authentication("AZURE_STORAGE_ACCOUNT is missing".to_string())
         })?;
-        let url = format!("https://{}.blob.core.windows.net/{}/{}", account, container, blob);
+        let url = format!(
+            "https://{}.blob.core.windows.net/{}/{}",
+            account, container, blob
+        );
 
         let sas_token = std::env::var("AZURE_STORAGE_SAS_TOKEN").map_err(|_| {
-            UploadError::Authentication("AZURE_STORAGE_SAS_TOKEN SAS credential is missing".to_string())
+            UploadError::Authentication(
+                "AZURE_STORAGE_SAS_TOKEN SAS credential is missing".to_string(),
+            )
         })?;
 
         let mut file = File::open(local_path)
@@ -167,19 +195,33 @@ impl UniversalUploader {
 
         match response {
             Ok(_) => Ok(()),
-            Err(e) => Err(UploadError::Network(format!("Azure blob upload failed: {}", e))),
+            Err(e) => Err(UploadError::Network(format!(
+                "Azure blob upload failed: {}",
+                e
+            ))),
         }
     }
 
-    fn upload_to_github(&self, local_path: &Path, owner: &str, repo: &str, tag: &str) -> Result<(), UploadError> {
-        let url = format!("https://uploads.github.com/repos/{}/{}/releases/tags/{}/assets", owner, repo, tag);
+    fn upload_to_github(
+        &self,
+        local_path: &Path,
+        owner: &str,
+        repo: &str,
+        tag: &str,
+    ) -> Result<(), UploadError> {
+        let url = format!(
+            "https://uploads.github.com/repos/{}/{}/releases/tags/{}/assets",
+            owner, repo, tag
+        );
 
         if self.dry_run {
             return Ok(());
         }
 
         let token = std::env::var("GITHUB_TOKEN").map_err(|_| {
-            UploadError::Authentication("GITHUB_TOKEN authorization credential is missing".to_string())
+            UploadError::Authentication(
+                "GITHUB_TOKEN authorization credential is missing".to_string(),
+            )
         })?;
 
         let mut file = File::open(local_path)
@@ -195,7 +237,10 @@ impl UniversalUploader {
 
         match response {
             Ok(_) => Ok(()),
-            Err(e) => Err(UploadError::Network(format!("GitHub Release upload failed: {}", e))),
+            Err(e) => Err(UploadError::Network(format!(
+                "GitHub Release upload failed: {}",
+                e
+            ))),
         }
     }
 }
@@ -207,8 +252,12 @@ impl Uploader for UniversalUploader {
         match destination {
             UploadDestination::S3 { bucket, key } => self.upload_to_s3(local_path, &bucket, &key),
             UploadDestination::Gcs { bucket, key } => self.upload_to_gcs(local_path, &bucket, &key),
-            UploadDestination::Azure { container, blob } => self.upload_to_azure(local_path, &container, &blob),
-            UploadDestination::GitHub { owner, repo, tag } => self.upload_to_github(local_path, &owner, &repo, &tag),
+            UploadDestination::Azure { container, blob } => {
+                self.upload_to_azure(local_path, &container, &blob)
+            }
+            UploadDestination::GitHub { owner, repo, tag } => {
+                self.upload_to_github(local_path, &owner, &repo, &tag)
+            }
         }
     }
 }
@@ -269,6 +318,10 @@ mod tests {
         assert!(uploader.upload(&payload_path, "s3://mock/obj").is_ok());
         assert!(uploader.upload(&payload_path, "gcs://mock/obj").is_ok());
         assert!(uploader.upload(&payload_path, "azure://mock/obj").is_ok());
-        assert!(uploader.upload(&payload_path, "github://mock/repo/v1.0.0/release").is_ok());
+        assert!(
+            uploader
+                .upload(&payload_path, "github://mock/repo/v1.0.0/release")
+                .is_ok()
+        );
     }
 }

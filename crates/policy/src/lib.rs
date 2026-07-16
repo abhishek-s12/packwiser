@@ -3,11 +3,11 @@
 //! Parses TOML-based policy rule settings (`policy.toml`) and evaluates package
 //! properties against them to ensure compliance in build pipelines.
 
+use packwiser_core::PackageManifest;
+use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use serde::{Deserialize, Serialize};
-use packwiser_core::PackageManifest;
 
 /// Struct representing parsed policy settings.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -36,48 +36,45 @@ pub fn validate_policy(
     let mut violations = Vec::new();
 
     // 1. Validate minimum score
-    if let Some(min_score) = policy.minimum_score {
-        if manifest.score < min_score {
+    if let Some(min_score) = policy.minimum_score
+        && manifest.score < min_score {
             violations.push(format!(
                 "Quality score {} is below the required minimum of {}",
                 manifest.score, min_score
             ));
         }
-    }
 
     // 2. Validate maximum archive size
-    if let Some(max_size) = policy.max_archive_size {
-        if archive_size > max_size {
+    if let Some(max_size) = policy.max_archive_size
+        && archive_size > max_size {
             violations.push(format!(
                 "Archive size ({} bytes) exceeds the allowed limit of {} bytes",
                 archive_size, max_size
             ));
         }
-    }
 
     // 3. Validate secrets policy
-    if let Some(true) = policy.no_secrets {
-        if !manifest.secrets.is_empty() {
+    if let Some(true) = policy.no_secrets
+        && !manifest.secrets.is_empty() {
             violations.push(format!(
                 "Security policy violation: {} credential leak(s) detected",
                 manifest.secrets.len()
             ));
         }
-    }
 
     // 4. Validate checksums requirement
-    if let Some(true) = policy.require_checksum {
-        if manifest.checksums.is_empty() {
-            violations.push("Integrity policy violation: package checksums are required".to_string());
+    if let Some(true) = policy.require_checksum
+        && manifest.checksums.is_empty() {
+            violations
+                .push("Integrity policy violation: package checksums are required".to_string());
         }
-    }
 
     // 5. Validate signature requirement
-    if let Some(true) = policy.require_signature {
-        if !is_signed {
-            violations.push("Authenticity policy violation: package signature is required".to_string());
+    if let Some(true) = policy.require_signature
+        && !is_signed {
+            violations
+                .push("Authenticity policy violation: package signature is required".to_string());
         }
-    }
 
     if violations.is_empty() {
         Ok(())
@@ -105,10 +102,10 @@ pub fn load_policy(path: &Path) -> Result<PolicyConfig, std::io::Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use packwiser_core::SecretLeak;
     use std::collections::HashMap;
     use std::io::Write;
     use std::path::PathBuf;
-    use packwiser_core::SecretLeak;
 
     fn test_manifest() -> PackageManifest {
         PackageManifest {

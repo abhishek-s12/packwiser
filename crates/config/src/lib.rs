@@ -3,11 +3,10 @@
 //! Loads options from global directories, home user configurations, and local workspace roots,
 //! merging profile tables (release, ci, backup, distribution) based on priority rules.
 
+use packwiser_core::{ConfigError, ConfigLoader, ConfigProfile, PackWiserConfig};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use toml;
-use packwiser_core::{ConfigProfile, PackWiserConfig, ConfigLoader, ConfigError};
 
 /// Default implementation of the `ConfigLoader` trait.
 #[derive(Debug, Clone, Copy, Default)]
@@ -25,7 +24,8 @@ impl DefaultConfigLoader {
             std::env::var("USERPROFILE")
                 .or_else(|_| {
                     let drive = std::env::var("HOMEDRIVE").unwrap_or_else(|_| "C:".to_string());
-                    let path = std::env::var("HOMEPATH").unwrap_or_else(|_| "\\Users\\Default".to_string());
+                    let path = std::env::var("HOMEPATH")
+                        .unwrap_or_else(|_| "\\Users\\Default".to_string());
                     Ok::<String, std::env::VarError>(format!("{}{}", drive, path))
                 })
                 .ok()
@@ -33,7 +33,12 @@ impl DefaultConfigLoader {
             std::env::var("HOME").ok()
         };
 
-        home.map(|h| PathBuf::from(h).join(".config").join("packwiser").join("packwiser.toml"))
+        home.map(|h| {
+            PathBuf::from(h)
+                .join(".config")
+                .join("packwiser")
+                .join("packwiser.toml")
+        })
     }
 
     /// Resolves the global system configuration file directory.
@@ -103,20 +108,17 @@ impl ConfigLoader for DefaultConfigLoader {
 
         // 1. Try loading Global configuration (lowest priority)
         let global_path = self.resolve_global_config_path();
-        if global_path.exists() {
-            if let Ok(global_cfg) = parse_config_file(&global_path) {
+        if global_path.exists()
+            && let Ok(global_cfg) = parse_config_file(&global_path) {
                 merge_config(&mut resolved, global_cfg);
             }
-        }
 
         // 2. Try loading User configuration
-        if let Some(user_path) = self.resolve_user_config_path() {
-            if user_path.exists() {
-                if let Ok(user_cfg) = parse_config_file(&user_path) {
+        if let Some(user_path) = self.resolve_user_config_path()
+            && user_path.exists()
+                && let Ok(user_cfg) = parse_config_file(&user_path) {
                     merge_config(&mut resolved, user_cfg);
                 }
-            }
-        }
 
         // 3. Try loading Workspace configuration (highest priority)
         let workspace_path = workspace_root.join("packwiser.toml");
@@ -130,11 +132,13 @@ impl ConfigLoader for DefaultConfigLoader {
 }
 
 fn parse_config_file(path: &Path) -> Result<PackWiserConfig, ConfigError> {
-    let content = fs::read_to_string(path)
-        .map_err(|e| ConfigError::Read(format!("Failed to read config file at {:?}: {}", path, e)))?;
+    let content = fs::read_to_string(path).map_err(|e| {
+        ConfigError::Read(format!("Failed to read config file at {:?}: {}", path, e))
+    })?;
 
-    toml::from_str(&content)
-        .map_err(|e| ConfigError::Parse(format!("Failed to parse config TOML at {:?}: {}", path, e)))
+    toml::from_str(&content).map_err(|e| {
+        ConfigError::Parse(format!("Failed to parse config TOML at {:?}: {}", path, e))
+    })
 }
 
 /// Merges `incoming` config options into the `base` configuration, overriding base values.
@@ -219,7 +223,7 @@ mod tests {
     fn test_load_workspace_overrides() {
         let temp_dir = tempdir().unwrap();
         let config_path = temp_dir.path().join("packwiser.toml");
-        
+
         let toml_content = r#"
 [profiles.release]
 compression_format = "tar.zst"

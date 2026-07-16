@@ -2,9 +2,9 @@
 //!
 //! Provides streaming calculations for SHA-256, SHA-512, BLAKE3, and CRC32.
 
-use std::io::{self, Read};
-use sha2::{Digest, Sha256, Sha512};
 use crc32fast::Hasher as CrcHasher;
+use sha2::{Digest, Sha256, Sha512};
+use std::io::{self, Read};
 
 /// Aggregated checksum results for a file or stream.
 #[derive(Debug, Clone, PartialEq, Eq)]

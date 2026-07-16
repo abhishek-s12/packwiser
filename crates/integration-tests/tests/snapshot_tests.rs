@@ -1,9 +1,9 @@
+use packwiser_core::ProjectDetector;
+use packwiser_detector::HeuristicProjectDetector;
+use packwiser_integration_tests::create_mock_project;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::tempdir;
-use packwiser_integration_tests::create_mock_project;
-use packwiser_detector::HeuristicProjectDetector;
-use packwiser_core::ProjectDetector;
 
 fn get_snapshot_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -34,13 +34,12 @@ fn test_detector_snapshot_regression() {
     }
 
     let expected = fs::read_to_string(&snapshot_file).unwrap();
-    
+
     let normalized_serialized = serialized.replace("\r\n", "\n");
     let normalized_expected = expected.replace("\r\n", "\n");
 
     assert_eq!(
-        normalized_serialized, 
-        normalized_expected, 
+        normalized_serialized, normalized_expected,
         "Snapshot mismatch! Run with UPDATE_SNAPSHOT=1 environment variable to update."
     );
 }
