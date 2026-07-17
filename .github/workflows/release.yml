@@ -1,0 +1,46 @@
+name: Release Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Package Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build Release Binaries
+        run: cargo build --release
+
+      - name: Run PackWiser Package & Scan
+        run: |
+          # Use PackWiser to package its own repository source and release artifacts
+          cargo run --package packwiser-cli --release -- --output packwiser-release.zip package .
+          # Verify that the package was generated successfully
+          ls -lh packwiser-release.zip
+          ls -lh manifest.json
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            packwiser-release.zip
+            manifest.json
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

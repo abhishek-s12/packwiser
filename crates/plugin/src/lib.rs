@@ -18,28 +18,39 @@ impl DefaultPluginEngine {
         Self
     }
 
-    /// Helper to execute a custom compressor hook command via system shell subprocess.
+    /// Helper to execute a custom compressor hook command via subprocess.
     ///
     /// Receives a list of input file paths and the output archive path, replaces
     /// `{input}` and `{output}` placeholders, and runs the command.
     pub fn execute_compressor(
         &self,
-        command_string: &str,
+        program: &str,
+        args: &[String],
+        allow_shell: bool,
         input_files: &[PathBuf],
         output_archive: &Path,
     ) -> Result<(), PluginError> {
-        let input_str = input_files
-            .iter()
-            .map(|p| p.to_string_lossy().into_owned())
-            .collect::<Vec<String>>()
-            .join(" ");
-        let output_str = output_archive.to_string_lossy().into_owned();
+        let expanded_args = expand_compressor_args(args, input_files, output_archive);
 
-        let expanded_command = command_string
-            .replace("{input}", &input_str)
-            .replace("{output}", &output_str);
-
-        execute_shell_command(&expanded_command)
+        if allow_shell {
+            let cmd_string = format!("{} {}", program, expanded_args.join(" "));
+            execute_shell_command(&cmd_string)
+        } else {
+            let status = Command::new(program)
+                .args(&expanded_args)
+                .status()
+                .map_err(|e| {
+                    PluginError::Execution(format!("Failed to execute compressor command: {}", e))
+                })?;
+            if status.success() {
+                Ok(())
+            } else {
+                Err(PluginError::Execution(format!(
+                    "Compressor command returned non-zero exit status: {:?}",
+                    status.code()
+                )))
+            }
+        }
     }
 
     /// Helper to execute a custom uploader hook command.
@@ -47,18 +58,74 @@ impl DefaultPluginEngine {
     /// Replaces `{archive}` and `{uri}` parameters, and executes the command subprocess.
     pub fn execute_uploader(
         &self,
-        command_string: &str,
+        program: &str,
+        args: &[String],
+        allow_shell: bool,
         archive_path: &Path,
         target_uri: &str,
     ) -> Result<(), PluginError> {
-        let archive_str = archive_path.to_string_lossy().into_owned();
+        let expanded_args = expand_uploader_args(args, archive_path, target_uri);
 
-        let expanded_command = command_string
-            .replace("{archive}", &archive_str)
-            .replace("{uri}", target_uri);
-
-        execute_shell_command(&expanded_command)
+        if allow_shell {
+            let cmd_string = format!("{} {}", program, expanded_args.join(" "));
+            execute_shell_command(&cmd_string)
+        } else {
+            let status = Command::new(program)
+                .args(&expanded_args)
+                .status()
+                .map_err(|e| {
+                    PluginError::Execution(format!("Failed to execute uploader command: {}", e))
+                })?;
+            if status.success() {
+                Ok(())
+            } else {
+                Err(PluginError::Execution(format!(
+                    "Uploader command returned non-zero exit status: {:?}",
+                    status.code()
+                )))
+            }
+        }
     }
+}
+
+fn expand_compressor_args(
+    args: &[String],
+    input_files: &[PathBuf],
+    output_archive: &Path,
+) -> Vec<String> {
+    let mut expanded = Vec::new();
+    let output_str = output_archive.to_string_lossy().into_owned();
+
+    for arg in args {
+        if arg == "{input}" {
+            for file in input_files {
+                expanded.push(file.to_string_lossy().into_owned());
+            }
+        } else {
+            let replaced = arg
+                .replace(
+                    "{input}",
+                    &input_files
+                        .iter()
+                        .map(|p| p.to_string_lossy().into_owned())
+                        .collect::<Vec<String>>()
+                        .join(" "),
+                )
+                .replace("{output}", &output_str);
+            expanded.push(replaced);
+        }
+    }
+    expanded
+}
+
+fn expand_uploader_args(args: &[String], archive_path: &Path, target_uri: &str) -> Vec<String> {
+    let archive_str = archive_path.to_string_lossy().into_owned();
+    args.iter()
+        .map(|arg| {
+            arg.replace("{archive}", &archive_str)
+                .replace("{uri}", target_uri)
+        })
+        .collect()
 }
 
 impl PluginEngine for DefaultPluginEngine {
@@ -140,6 +207,7 @@ mod tests {
         let content = r#"
 name = "my-plugin"
 version = "1.0.0"
+allow_shell = true
 
 [[languages]]
 name = "MyCustomLang"
@@ -152,21 +220,42 @@ entropy_threshold = 5.2
 
 [[compressors]]
 format = "xyz"
-command = "zip -r {output} {input}"
+command = "zip"
+args = ["-r", "{output}", "{input}"]
 
 [[uploaders]]
 scheme = "myscheme"
-command = "curl -T {archive} {uri}"
+command = "curl"
+args = ["-T", "{archive}", "{uri}"]
 "#;
 
         let manifest: PluginManifest = toml::from_str(content).unwrap();
         assert_eq!(manifest.name, "my-plugin");
+        assert!(manifest.allow_shell);
         assert_eq!(manifest.languages.len(), 1);
         assert_eq!(manifest.languages[0].name, "MyCustomLang");
         assert_eq!(manifest.languages[0].extensions, vec!["xyz", "abc"]);
         assert_eq!(manifest.secret_rules[0].name, "CustomToken");
         assert_eq!(manifest.compressors[0].format, "xyz");
+        assert_eq!(manifest.compressors[0].command, "zip");
+        assert_eq!(
+            manifest.compressors[0].args,
+            vec![
+                "-r".to_string(),
+                "{output}".to_string(),
+                "{input}".to_string()
+            ]
+        );
         assert_eq!(manifest.uploaders[0].scheme, "myscheme");
+        assert_eq!(manifest.uploaders[0].command, "curl");
+        assert_eq!(
+            manifest.uploaders[0].args,
+            vec![
+                "-T".to_string(),
+                "{archive}".to_string(),
+                "{uri}".to_string()
+            ]
+        );
     }
 
     #[test]
@@ -190,6 +279,7 @@ uploaders = []
         assert_eq!(plugins.len(), 1);
         assert_eq!(plugins[0].name, "my-cool-plugin");
         assert_eq!(plugins[0].version, "2.1.0");
+        assert!(!plugins[0].allow_shell); // defaults to false
     }
 
     #[test]
@@ -199,11 +289,37 @@ uploaders = []
         assert!(execute_shell_command(command_string).is_ok());
 
         // Placeholders replacement
-        let uploader_cmd = "echo '{archive} to {uri}'";
         let archive = Path::new("test.zip");
         assert!(
             engine
-                .execute_uploader(uploader_cmd, archive, "s3://mybucket")
+                .execute_uploader(
+                    "echo",
+                    &[
+                        "{archive}".to_string(),
+                        "to".to_string(),
+                        "{uri}".to_string()
+                    ],
+                    true,
+                    archive,
+                    "s3://mybucket"
+                )
+                .is_ok()
+        );
+
+        // Subprocess (no-shell) execution test using cargo --version (which is a standalone binary)
+        assert!(
+            engine
+                .execute_uploader(
+                    "cargo",
+                    &[
+                        "--version".to_string(),
+                        "{archive}".to_string(),
+                        "{uri}".to_string()
+                    ],
+                    false,
+                    archive,
+                    "s3://mybucket"
+                )
                 .is_ok()
         );
     }

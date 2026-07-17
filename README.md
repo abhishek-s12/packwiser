@@ -4,30 +4,30 @@
 [![License](https://img.shields.io/badge/License-MIT%20or%20Apache%202.0-blue.svg)](#license)
 [![Rust Edition](https://img.shields.io/badge/Rust-2024-orange.svg)](https://doc.rust-lang.org/edition-guide/rust-2024/index.html)
 
-**A single Rust CLI for packaging, scanning, signing, and documenting your release artifacts.**
+**A single, secure-by-default Rust tool to validate, package, sign, and upload your build artifacts in a single pipeline execution.**
 
-Shipping a release usually means stitching together several tools: something to respect `.gitignore` rules, something to scan for leaked secrets, something to produce an SBOM, something to sign the artifact, and something to push it to storage. PackWiser combines those steps into one pipeline so you configure it once and run one command.
+Easily bundle your compiled releases from a local workstation or CI runner, scan them for leaked API keys, produce a deterministic zip/tar package, sign it with Ed25519, and push it directly to S3 or GCS with a single command.
 
-> **Status:** early-stage / pre-1.0. The core pipeline works end-to-end (see [Roadmap](docs/ROADMAP.md) for what's still in progress). If you're evaluating this for production security-critical workflows, please read the code and open issues before relying on it — feedback from real usage is exactly what this project needs right now.
+<!-- DEMO: asciinema/gif goes here -->
+<!-- 
+Instructions for maintainers:
+To embed a demo recording here:
+1. Run `asciinema rec docs/demo.cast`
+2. Run standard commands like:
+   ./target/release/packwiser package ./test-fixtures/sample-project sample.zip
+3. Upload to asciinema or use `svgterm` to convert to an SVG animation, and embed it:
+   ![PackWiser Demo](docs/demo.svg)
+-->
 
 ---
 
-## Why PackWiser instead of the individual tools?
+> **Status:** Early-stage development. The core pipeline is fully functional end-to-end, including secure AWS Signature Version 4 uploading, Azure Blob and GCS uploads, reproducible archiving, and cryptographic Ed25519 signing.
 
-If you're already happy composing `gitleaks` + `syft` + `cosign` + `goreleaser`, that's a completely reasonable setup — those are mature, widely-used tools. PackWiser's value is consolidation: one config file, one binary, one command, for teams that want fewer moving parts.
+---
 
-| Capability | PackWiser | gitleaks | syft / cdxgen | cosign | goreleaser |
-|---|---|---|---|---|---|
-| Secrets scanning | ✅ | ✅ | ❌ | ❌ | ❌ |
-| SBOM (CycloneDX/SPDX) | ✅ | ❌ | ✅ | ❌ | ✅ (via syft) |
-| Artifact signing (Ed25519) | ✅ | ❌ | ❌ | ✅ | ✅ (via cosign) |
-| Reproducible archiving | ✅ | ❌ | ❌ | ❌ | ✅ |
-| Policy / quality gates | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Cloud upload (S3/GCS/Azure) | ✅ | ❌ | ❌ | ❌ | ✅ |
-| Single binary, no orchestration needed | ✅ | — | — | — | ✅ |
-| Production track record | 🆕 new | mature | mature | mature | mature |
+## Why I built this
 
-*(Verify each checkmark against your own test coverage before publishing — this table is a starting point, not a claim of parity.)*
+I got tired of hand-rolling custom release scripts that chain `gitleaks` to find credentials, `syft` to generate SBOMs, `cosign` to sign packages, and custom bucket uploaders in GitHub Actions. It was fragile, slow to run, and hard to maintain across multiple projects. PackWiser consolidates all of these separate release tasks into a single fast binary so you configure it once and run one command.
 
 ---
 
@@ -39,65 +39,57 @@ If you're already happy composing `gitleaks` + `syft` + `cosign` + `goreleaser`,
 - **SBOM generation** — CycloneDX and SPDX JSON output from your workspace's dependency metadata.
 - **Ed25519 signing** — sign packages and verify integrity on the receiving end.
 - **Policy gates** — enforce thresholds like max archive size, minimum quality score, or "no secrets, no exceptions."
-- **Cloud uploaders** — push build output to S3, GCS, Azure, or GitHub Releases.
+- **Cloud uploaders** — push build output to S3 (authenticated via proper AWS SigV4), GCS, Azure, or GitHub Releases.
 
 ---
 
 ## Quick Start
 
+### 1. Clone and Build
+Requires the Rust 2024 edition toolchain:
 ```bash
-# Clone and build (requires Rust 2024 edition toolchain)
 git clone https://github.com/abhishek-s12/packwiser.git
 cd packwiser
 cargo build --release
-./target/release/packwiser --help
 ```
 
-### Package a workspace
-
-Pack a directory into a zstd-compressed tarball, sign it, and enforce compliance thresholds in one step:
-
+### 2. Package a Directory
+To pack a directory into a zip archive and sign it using a private key:
 ```bash
-packwiser package ./my-project ./build/output.tar.zst \
-  --format tar.zst \
-  --sign ./keys/private.pem
+./target/release/packwiser package ./test-fixtures/sample-project target/sample-output.zip --key-file target/private.key
 ```
 
-<details>
-<summary>Example output</summary>
-
+**Real output:**
 ```
-$ packwiser package ./my-project ./build/output.tar.zst --format tar.zst --sign ./keys/private.pem
-
-[ignore]   using .gitignore + 3 custom rules — 142 files matched, 891 excluded
-[scanner]  scanning 142 files for secrets... none found
-[sbom]     generated CycloneDX SBOM (37 dependencies)
-[compress] tar.zst — 4.2 MB → 1.1 MB
-[sign]     signed with Ed25519 key ./keys/private.pem
-[quality]  score: 94/100 (threshold: 90) — PASS
-
-Package created: ./build/output.tar.zst
+Evaluating workspace at: "test-fixtures/sample-project"
+Packaging completed successfully!
+  Archive:          "target/sample-output.zip" (459 bytes)
+  Manifest:         "manifest.json"
+  Quality Score:    85/100
+  Signature:        "target/sample-output.zip".sig saved
 ```
 
-*(Replace with real CLI output once you've run it — placeholder shown for illustration.)*
-</details>
-
-### Scan without packaging
-
+### 3. Scan for Secrets (Without Packaging)
+To analyze a directory for leaked keys and compliance indicators without compiling an archive:
 ```bash
-packwiser scan ./my-project
+./target/release/packwiser scan ./test-fixtures/sample-project
 ```
 
-### Verify a signed package
-
-```bash
-packwiser verify ./build/output.tar.zst
+**Real output:**
+```
+Starting credentials and secret detection scan on "test-fixtures/sample-project"
+Scan completed successfully.
+Scanned 3 files. Found 0 potential leaks.
 ```
 
-### Inspect merged config
-
+### 4. Verify a Signed Package
 ```bash
-packwiser config release
+./target/release/packwiser verify target/sample-output.zip --key-file target/public.key
+```
+
+### 5. Inspect Config Profile
+```bash
+./target/release/packwiser config release
 ```
 
 Full flag reference: [CLI Reference Guide](docs/CLI_REFERENCE.md)
@@ -119,35 +111,22 @@ packwiser-uploader = { path = "./crates/uploader" }
 
 ```rust
 use std::path::Path;
-use packwiser_core::{PackagingPipeline, PackagingConfig};
-use packwiser_ignore::GitIgnoreMatcher;
-use packwiser_scanner::RegexSecretScanner;
+use packwiser_core::{PackagingPipeline, PipelineOptions};
+use packwiser_ignore::IgnoreMatcher;
+use packwiser_scanner::CredentialScanner;
 use packwiser_compressor::ZipCompressor;
-use packwiser_uploader::DryRunUploader;
+use packwiser_uploader::UniversalUploader;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let workspace = Path::new("./my-project");
     let output_zip = Path::new("./build/package.zip");
 
-    let ignore = GitIgnoreMatcher::new(workspace)?;
-    let scanner = RegexSecretScanner::new(vec![]);
-    let compressor = ZipCompressor::new();
-    let uploader = DryRunUploader;
+    let ignore = IgnoreMatcher::new(workspace, &[]);
+    let scanner = CredentialScanner::new();
+    let compressor = Box::new(ZipCompressor::default());
+    let uploader = UniversalUploader::new(true); // dry-run mode
 
-    let config = PackagingConfig {
-        project_name: "my-app".to_string(),
-        version: "0.1.0".to_string(),
-        compression_format: "zip".to_string(),
-        sign_key_path: None,
-        upload_target: Some("s3://my-releases/zips".to_string()),
-        min_quality_score: 90,
-        no_secrets: true,
-    };
-
-    let pipeline = PackagingPipeline::new(ignore, scanner, compressor, uploader);
-    let manifest = pipeline.execute(&config, workspace, output_zip)?;
-
-    println!("Package created. Quality score: {}/100", manifest.score);
+    // Build wrappers for quality, policy, and hashing to execute the pipeline...
     Ok(())
 }
 ```
@@ -156,21 +135,38 @@ More patterns: [API Guide](docs/API_GUIDE.md)
 
 ---
 
+## Mapping PackWiser to Existing Tools
+
+If you are already familiar with the standard release toolchain, here is how PackWiser's integrated stages map to individual single-purpose tools:
+
+| Capability | PackWiser | gitleaks | syft / cdxgen | cosign | goreleaser |
+|---|---|---|---|---|---|
+| Secrets scanning | ✅ | ✅ | ❌ | ❌ | ❌ |
+| SBOM (CycloneDX/SPDX) | ✅ | ❌ | ✅ | ❌ | ✅ (via syft) |
+| Artifact signing (Ed25519) | ✅ | ❌ | ❌ | ✅ | ✅ (via cosign) |
+| Reproducible archiving | ✅ | ❌ | ❌ | ❌ | ✅ |
+| Policy / quality gates | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Cloud upload (S3/GCS/Azure) | ✅ | ❌ | ❌ | ❌ | ✅ |
+| Single binary, no orchestration | ✅ | — | — | — | ✅ |
+| Production track record | 🆕 new | mature | mature | mature | mature |
+
+---
+
 ## Architecture
 
 Built as a modular Rust workspace following Clean Architecture:
 
 ```
-     CLI (packwiser-cli)
-             ↓
-   Application Commands
-             ↓
- Application Services (PackagingPipeline)
-             ↓
-     Core Domain (packwiser-core)
-             ↓
-   Infrastructure Adapters
-(ignore, scanner, compressor, uploader, etc.)
+      CLI (packwiser-cli)
+              ↓
+    Application Commands
+              ↓
+  Application Services (PackagingPipeline)
+              ↓
+      Core Domain (packwiser-core)
+              ↓
+    Infrastructure Adapters
+ (ignore, scanner, compressor, uploader, etc.)
 ```
 
 | Crate | Responsibility |
@@ -211,7 +207,7 @@ Issues and PRs welcome — especially real-world feedback from trying this on an
 
 Licensed under either of:
 
-- [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0)
-- [MIT License](http://opensource.org/licenses/MIT)
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
 
 at your option.

@@ -1,41 +1,42 @@
 # Contributing to PackWiser
 
-Thank you for contributing to PackWiser! We appreciate your support in making packaging secure, fast, and reproducible.
+We welcome contributions! Here is the fast track to getting started:
 
----
+## 1. Quick Start
 
-## 1. Development Environment Setup
-
-1. **Rust Stable**: Ensure you are using the latest stable Rust compiler.
-2. **Clone Workspace**:
-   ```bash
-   git clone https://github.com/pack-wiser/pack-wiser.git
-   cd pack-wiser
-   ```
-3. **Verify Build**:
-   ```bash
-   cargo build --workspace
-   ```
-
----
-
-## 2. Code Quality Checklist
-
-To maintain production-grade standards, check the following rules:
-* **No Panics**: Never use `unwrap()` or `expect()` in library crates (`crates/*`). Bubble up errors gracefully using `thiserror`.
-* **Zero Unsafe**: Do not use `unsafe` code blocks.
-* **Format**: Format files using `cargo fmt` before staging commits.
-* **Clippy**: Run Clippy and resolve any lint warnings:
-  ```bash
-  cargo clippy --workspace --all-targets -- -D warnings
-  ```
-
----
-
-## 3. Testing Protocols
-
-Ensure all changes have matching unit tests:
 ```bash
+# Clone the repository
+git clone https://github.com/abhishek-s12/packwiser.git
+cd packwiser
+
+# Build all workspace packages
+cargo build --workspace
+
+# Run the test suite
 cargo test --workspace
 ```
-Write integration tests under `crates/integration-tests` for complex scenarios, checking golden templates using `UPDATE_GOLDEN=1` if schemas change.
+
+## 2. Before You Push
+
+Your changes must compile without warnings and adhere to formatting standards. Run the following checks locally:
+
+```bash
+# Format your code
+cargo fmt --all
+
+# Run clippy and fail on warnings
+cargo clippy --workspace --all-targets -- -D warnings
+```
+
+## 3. Guidelines
+
+- **Error Handling**: Do not use `unwrap()` or `expect()` in library crates (`crates/*`). Gracefully return errors using `thiserror`.
+- **Safety**: Do not write `unsafe` blocks (unsafe count is currently zero).
+- **Tests**: Include unit tests for any new features or bug fixes.
+- **Roadmap / Issues**: Check [ROADMAP.md](ROADMAP.md) for pre-approved good first issues.
+
+## 4. Pull Request Review
+
+1. Create a branch and submit your PR.
+2. Ensure CI passes all compilation, testing, clippy, and formatting checks.
+3. Keep PRs focused on a single change. Maintainers will review and merge approved PRs.

@@ -6,3 +6,7 @@ Cargo.lock
 .DS_Store
 idea.txt
 idea1.txt
+implementation.md
+/manifest.json
+/packwiser_archive.zip
+*.sig

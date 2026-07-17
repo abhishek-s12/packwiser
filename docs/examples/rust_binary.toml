@@ -1,0 +1,14 @@
+# PackWiser Configuration Example for a Rust Binary Project
+
+[profiles.release]
+compression_format = "tar.zst"
+min_quality_score = 90
+no_secrets = true
+require_signature = true
+upload_target = "s3://my-rust-releases-bucket/binaries"
+
+[profiles.ci]
+compression_format = "tar.gz"
+min_quality_score = 80
+no_secrets = true
+require_signature = false

@@ -1,0 +1,14 @@
+# PackWiser Configuration Example for a Node.js npm Package
+
+[profiles.release]
+compression_format = "zip"
+min_quality_score = 95
+no_secrets = true
+require_signature = true
+upload_target = "gcs://my-npm-packages-bucket/zips"
+
+[profiles.ci]
+compression_format = "zip"
+min_quality_score = 85
+no_secrets = true
+require_signature = false

@@ -20,6 +20,18 @@ PackWiser integrates active scan heuristic modules:
 
 ---
 
-## 3. Reporting Vulnerabilities
+## 3. Plugin Command Execution Risks
+
+PackWiser supports dynamic custom compressor and uploader plugins. By default, custom commands are executed directly as subprocesses without intermediate shell interpolation. This helps mitigate command injection risks.
+
+If a plugin requires shell integration, it must explicitly configure `allow_shell = true` in its `plugin.toml` manifest.
+
+> [!WARNING]
+> Enabling `allow_shell = true` runs plugin commands through the system shell (`powershell` on Windows, `/bin/sh` on Unix-like environments). This introduces potential shell command injection vulnerabilities if inputs, output paths, or target URIs contain untrusted user values. Use with caution.
+
+---
+
+## 4. Reporting Vulnerabilities
 
 If you discover a security issue or vulnerability in PackWiser, please do not open a public issue. Email details to `security@packwiser.dev`. We aim to reply to all reports within 48 hours and fix issues under responsible disclosure guidelines.
+

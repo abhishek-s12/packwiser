@@ -402,8 +402,11 @@ pub struct CustomSecretRule {
 pub struct CustomCompressorHook {
     /// Supported archive format suffix (e.g. "xyz")
     pub format: String,
-    /// Absolute or relative command string executing compression, receiving inputs.
+    /// Absolute or relative command program/binary to run.
     pub command: String,
+    /// Arguments for the command.
+    #[serde(default)]
+    pub args: Vec<String>,
 }
 
 /// Represents a custom remote upload provider hook.
@@ -411,8 +414,11 @@ pub struct CustomCompressorHook {
 pub struct CustomUploaderHook {
     /// Scheme format identifier matching (e.g. "myscheme")
     pub scheme: String,
-    /// Command string executing upload, passing archive and target parameters.
+    /// Absolute or relative command program/binary to run.
     pub command: String,
+    /// Arguments for the command.
+    #[serde(default)]
+    pub args: Vec<String>,
 }
 
 /// Represents the complete loaded plugin configuration.
@@ -422,6 +428,9 @@ pub struct PluginManifest {
     pub name: String,
     /// Version constraints
     pub version: String,
+    /// Whether execution of commands in a shell is allowed (default false)
+    #[serde(default)]
+    pub allow_shell: bool,
     /// Languages contributed by this plugin
     pub languages: Vec<CustomLanguage>,
     /// Secret scanner rules contributed by this plugin

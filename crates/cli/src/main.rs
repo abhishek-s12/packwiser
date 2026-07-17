@@ -72,6 +72,10 @@ enum Commands {
         #[arg(default_value = ".")]
         path: PathBuf,
 
+        /// Custom target output destination path
+        #[arg(help = "Optional path to write the output archive (e.g. build/output.tar.zst)")]
+        output_file: Option<PathBuf>,
+
         /// Path to a private key file for digital signing
         #[arg(long, help = "Optional path to a 32-byte raw Ed25519 private key file")]
         key_file: Option<PathBuf>,
@@ -141,6 +145,7 @@ fn main() -> Result<()> {
     match args.command {
         Commands::Package {
             path,
+            output_file,
             key_file,
             upload,
         } => {
@@ -167,9 +172,9 @@ fn main() -> Result<()> {
             let language = detect_primary_language(&files);
 
             // 3. Determine output archive format and path
-            let output_archive = args
-                .output
+            let output_archive = output_file
                 .clone()
+                .or(args.output.clone())
                 .unwrap_or_else(|| PathBuf::from("packwiser_archive.zip"));
 
             // 4. Instantiating compressor based on file extension

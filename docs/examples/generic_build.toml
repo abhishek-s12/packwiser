@@ -1,0 +1,14 @@
+# PackWiser Configuration Example for Generic Build Artifacts
+
+[profiles.release]
+compression_format = "tar.xz"
+min_quality_score = 90
+no_secrets = true
+require_signature = true
+upload_target = "azure://mycontainer/generic-builds"
+
+[profiles.ci]
+compression_format = "tar.gz"
+min_quality_score = 80
+no_secrets = true
+require_signature = false
